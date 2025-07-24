@@ -2430,15 +2430,26 @@ const MessagesPage = () => {
               >
                 ←
               </button>
-              <img 
-                src={selectedConversation.partner.avatar} 
-                alt={selectedConversation.partner.name}
-                className="w-10 h-10 rounded-xl object-cover"
-              />
-              <div>
-                <h3 className="font-semibold text-white">{selectedConversation.partner.name}</h3>
-                <p className="text-zinc-400 text-sm">@{selectedConversation.partner.username}</p>
+              <div 
+                className="flex items-center space-x-3 flex-1 cursor-pointer hover:bg-zinc-800 rounded-lg p-2 -m-2 transition-colors"
+                onClick={() => navigate(`/user/${selectedConversation.partner.id}`)}
+              >
+                <img 
+                  src={selectedConversation.partner.avatar} 
+                  alt={selectedConversation.partner.name}
+                  className="w-10 h-10 rounded-xl object-cover"
+                />
+                <div>
+                  <h3 className="font-semibold text-white">{selectedConversation.partner.name}</h3>
+                  <p className="text-zinc-400 text-sm">@{selectedConversation.partner.username}</p>
+                </div>
               </div>
+              <button
+                onClick={() => navigate(`/user/${selectedConversation.partner.id}`)}
+                className="text-zinc-400 hover:text-white transition-colors text-sm"
+              >
+                Profil →
+              </button>
             </div>
 
             {/* Messages */}
