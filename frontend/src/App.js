@@ -1474,11 +1474,19 @@ const HistoryPage = () => {
                     <p className="text-white font-medium mb-2">{decision.text}</p>
                     <div className="flex items-center space-x-2">
                       <span className="text-sm text-zinc-400">{decision.created_at}</span>
-                      {decision.is_public ? (
-                        <span className="text-xs bg-zinc-700 text-zinc-300 px-2 py-1 rounded-full border border-zinc-600">Herkese Açık</span>
-                      ) : (
-                        <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-1 rounded-full border border-zinc-700">Gizli</span>
-                      )}
+                      {(() => {
+                        const privacyLevel = decision.privacy_level || (decision.is_public ? "public" : "private");
+                        switch(privacyLevel) {
+                          case "public":
+                            return <span className="text-xs bg-green-900 text-green-300 px-2 py-1 rounded-full border border-green-700">🌍 Herkese Açık</span>;
+                          case "followers":
+                            return <span className="text-xs bg-blue-900 text-blue-300 px-2 py-1 rounded-full border border-blue-700">👥 Takipçilere</span>;
+                          case "private":
+                            return <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-1 rounded-full border border-zinc-700">🔒 Gizli</span>;
+                          default:
+                            return <span className="text-xs bg-zinc-700 text-zinc-300 px-2 py-1 rounded-full border border-zinc-600">Belirsiz</span>;
+                        }
+                      })()}
                     </div>
                   </div>
                 </div>
