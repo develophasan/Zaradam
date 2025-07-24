@@ -159,6 +159,18 @@ const NotificationBell = () => {
     }
   };
 
+  const markAsRead = async (notificationId) => {
+    try {
+      await apiCall(`${API}/notifications/${notificationId}/read`, {
+        method: 'PUT'
+      });
+      fetchUnreadCount();
+      fetchNotifications();
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
   const handleNotificationClick = async (notification) => {
     // Mark as read first
     if (!notification.read) {
