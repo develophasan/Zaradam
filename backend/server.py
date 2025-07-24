@@ -805,6 +805,30 @@ async def get_unread_notifications_count(current_user: dict = Depends(get_curren
 @app.post("/api/subscription/create-payment")
 async def create_subscription_payment(payment_data: PaymentRequest, current_user: dict = Depends(get_current_user)):
     """Create İyzico payment for monthly subscription"""
+    
+    # Test mode - İyzico'yu pas geç
+    if TEST_MODE:
+        # Test modunda direkt premium yap
+        next_payment_date = datetime.now() + timedelta(days=30)
+        users_collection.update_one(
+            {"_id": current_user["_id"]},
+            {"$set": {
+                "subscription.is_premium": True,
+                "subscription.subscription_id": f"test_{current_user['_id']}_{int(datetime.now().timestamp())}",
+                "subscription.subscription_status": "active",
+                "subscription.next_payment_date": next_payment_date,
+                "subscription.queries_used_today": 0
+            }}
+        )
+        
+        return {
+            "success": True,
+            "payment_id": f"test_payment_{int(datetime.now().timestamp())}",
+            "message": "Test modunda premium aboneliğiniz aktifleştirildi! (Gerçek ödeme yapılmadı)",
+            "test_mode": True
+        }
+    
+    # Gerçek İyzico entegrasyonu (production için)
     try:
         # Create payment request
         request = {
@@ -887,7 +911,8 @@ async def create_subscription_payment(payment_data: PaymentRequest, current_user
             return {
                 "success": True,
                 "payment_id": payment_result.payment_id,
-                "message": "Premium aboneliğiniz başarıyla aktifleştirildi! Artık sınırsız sorgu hakkınız var."
+                "message": "Premium aboneliğiniz başarıyla aktifleştirildi! Artık sınırsız sorgu hakkınız var.",
+                "test_mode": False
             }
         else:
             raise HTTPException(
