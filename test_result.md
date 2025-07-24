@@ -300,10 +300,9 @@
 
 ## test_plan:
   current_focus:
-    - "Complete messaging system backend API"
-    - "Implement real-time notifications system" 
     - "Implement complete messaging UI system"
     - "Add real-time notifications UI"
+    - "Implement user discovery and following system UI"
   stuck_tasks: []
   test_all: false
   test_priority: "high_first"
