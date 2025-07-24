@@ -43,7 +43,7 @@ security = HTTPBearer()
 
 app = FastAPI(title="Zaradam API")
 
-# CORS
+# CORS - Fixed version
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
