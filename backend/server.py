@@ -421,6 +421,303 @@ async def update_profile(profile_data: UserProfileUpdate, current_user: dict = D
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Profil güncelleme başarısız: {str(e)}")
 
+# MESSAGING ENDPOINTS
+
+@app.post("/api/messages/send")
+async def send_message(message_data: MessageCreate, current_user: dict = Depends(get_current_user)):
+    """Send a message to another user"""
+    # Check if recipient exists
+    recipient = users_collection.find_one({"_id": message_data.recipient_id})
+    if not recipient:
+        raise HTTPException(status_code=404, detail="Alıcı bulunamadı")
+    
+    # Check if users are connected (following each other) for privacy
+    sender_follows = follows_collection.find_one({
+        "follower_id": current_user["_id"],
+        "following_id": message_data.recipient_id
+    })
+    recipient_follows = follows_collection.find_one({
+        "follower_id": message_data.recipient_id,
+        "following_id": current_user["_id"]
+    })
+    
+    # Allow messaging if they follow each other
+    if not (sender_follows and recipient_follows):
+        raise HTTPException(status_code=403, detail="Sadece karşılıklı takip edilen kullanıcılara mesaj gönderebilirsiniz")
+    
+    message_id = str(uuid.uuid4())
+    message_doc = {
+        "_id": message_id,
+        "sender_id": current_user["_id"],
+        "recipient_id": message_data.recipient_id,
+        "content": message_data.content,
+        "created_at": datetime.now(),
+        "read": False
+    }
+    
+    messages_collection.insert_one(message_doc)
+    
+    # Create notification
+    notification_id = str(uuid.uuid4())
+    notification_doc = {
+        "_id": notification_id,
+        "user_id": message_data.recipient_id,
+        "type": "message",
+        "content": f"{current_user['name']} size mesaj gönderdi",
+        "data": {
+            "sender_id": current_user["_id"],
+            "sender_name": current_user["name"],
+            "message_id": message_id
+        },
+        "created_at": datetime.now(),
+        "read": False
+    }
+    notifications_collection.insert_one(notification_doc)
+    
+    # Send real-time notification via WebSocket
+    await manager.send_personal_message(
+        json.dumps({
+            "type": "new_message",
+            "data": {
+                "message_id": message_id,
+                "sender_name": current_user["name"],
+                "content": message_data.content
+            }
+        }),
+        message_data.recipient_id
+    )
+    
+    return {"success": True, "message_id": message_id}
+
+@app.get("/api/messages/conversations")
+async def get_conversations(current_user: dict = Depends(get_current_user)):
+    """Get all conversations for current user"""
+    # Get all messages where user is sender or recipient
+    messages = list(messages_collection.find({
+        "$or": [
+            {"sender_id": current_user["_id"]},
+            {"recipient_id": current_user["_id"]}
+        ]
+    }).sort("created_at", -1))
+    
+    # Group by conversation partner
+    conversations = {}
+    for message in messages:
+        partner_id = message["recipient_id"] if message["sender_id"] == current_user["_id"] else message["sender_id"]
+        
+        if partner_id not in conversations:
+            # Get partner info
+            partner = users_collection.find_one({"_id": partner_id}, {"password": 0})
+            conversations[partner_id] = {
+                "partner": {
+                    "id": partner["_id"],
+                    "name": partner["name"],
+                    "username": partner["username"],
+                    "avatar": partner["avatar"]
+                },
+                "last_message": {
+                    "content": message["content"],
+                    "created_at": message["created_at"].strftime("%Y-%m-%d %H:%M"),
+                    "sender_id": message["sender_id"],
+                    "read": message["read"]
+                },
+                "unread_count": 0
+            }
+        
+        # Count unread messages from partner
+        if message["sender_id"] == partner_id and not message["read"]:
+            conversations[partner_id]["unread_count"] += 1
+    
+    return list(conversations.values())
+
+@app.get("/api/messages/conversation/{partner_id}")
+async def get_conversation_messages(partner_id: str, current_user: dict = Depends(get_current_user), limit: int = 50):
+    """Get messages in a specific conversation"""
+    messages = list(messages_collection.find({
+        "$or": [
+            {"sender_id": current_user["_id"], "recipient_id": partner_id},
+            {"sender_id": partner_id, "recipient_id": current_user["_id"]}
+        ]
+    }).sort("created_at", -1).limit(limit))
+    
+    # Mark messages as read
+    messages_collection.update_many(
+        {"sender_id": partner_id, "recipient_id": current_user["_id"], "read": False},
+        {"$set": {"read": True}}
+    )
+    
+    # Format messages
+    formatted_messages = []
+    for message in reversed(messages):
+        formatted_messages.append({
+            "id": message["_id"],
+            "sender_id": message["sender_id"],
+            "content": message["content"],
+            "created_at": message["created_at"].strftime("%Y-%m-%d %H:%M"),
+            "read": message["read"],
+            "is_own": message["sender_id"] == current_user["_id"]
+        })
+    
+    return formatted_messages
+
+# FOLLOW SYSTEM ENDPOINTS
+
+@app.post("/api/users/follow")
+async def follow_user(follow_data: FollowUser, current_user: dict = Depends(get_current_user)):
+    """Follow another user"""
+    if follow_data.target_user_id == current_user["_id"]:
+        raise HTTPException(status_code=400, detail="Kendinizi takip edemezsiniz")
+    
+    # Check if target user exists
+    target_user = users_collection.find_one({"_id": follow_data.target_user_id})
+    if not target_user:
+        raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+    
+    # Check if already following
+    existing_follow = follows_collection.find_one({
+        "follower_id": current_user["_id"],
+        "following_id": follow_data.target_user_id
+    })
+    
+    if existing_follow:
+        raise HTTPException(status_code=400, detail="Bu kullanıcıyı zaten takip ediyorsunuz")
+    
+    # Create follow relationship
+    follow_id = str(uuid.uuid4())
+    follow_doc = {
+        "_id": follow_id,
+        "follower_id": current_user["_id"],
+        "following_id": follow_data.target_user_id,
+        "created_at": datetime.now()
+    }
+    follows_collection.insert_one(follow_doc)
+    
+    # Update stats
+    users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$inc": {"stats.following": 1}}
+    )
+    users_collection.update_one(
+        {"_id": follow_data.target_user_id},
+        {"$inc": {"stats.followers": 1}}
+    )
+    
+    # Create notification
+    notification_id = str(uuid.uuid4())
+    notification_doc = {
+        "_id": notification_id,
+        "user_id": follow_data.target_user_id,
+        "type": "follow",
+        "content": f"{current_user['name']} sizi takip etmeye başladı",
+        "data": {
+            "follower_id": current_user["_id"],
+            "follower_name": current_user["name"]
+        },
+        "created_at": datetime.now(),
+        "read": False
+    }
+    notifications_collection.insert_one(notification_doc)
+    
+    return {"success": True, "message": "Kullanıcı takip edildi"}
+
+@app.delete("/api/users/unfollow/{target_user_id}")
+async def unfollow_user(target_user_id: str, current_user: dict = Depends(get_current_user)):
+    """Unfollow a user"""
+    follow_record = follows_collection.find_one({
+        "follower_id": current_user["_id"],
+        "following_id": target_user_id
+    })
+    
+    if not follow_record:
+        raise HTTPException(status_code=404, detail="Bu kullanıcıyı takip etmiyorsunuz")
+    
+    # Remove follow relationship
+    follows_collection.delete_one({"_id": follow_record["_id"]})
+    
+    # Update stats
+    users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$inc": {"stats.following": -1}}
+    )
+    users_collection.update_one(
+        {"_id": target_user_id},
+        {"$inc": {"stats.followers": -1}}
+    )
+    
+    return {"success": True, "message": "Takip bırakıldı"}
+
+@app.get("/api/users/search")
+async def search_users(q: str, current_user: dict = Depends(get_current_user), limit: int = 20):
+    """Search users by name or username"""
+    if len(q.strip()) < 2:
+        raise HTTPException(status_code=400, detail="En az 2 karakter giriniz")
+    
+    users = list(users_collection.find({
+        "$and": [
+            {"_id": {"$ne": current_user["_id"]}},  # Exclude current user
+            {
+                "$or": [
+                    {"name": {"$regex": q, "$options": "i"}},
+                    {"username": {"$regex": q, "$options": "i"}}
+                ]
+            }
+        ]
+    }, {"password": 0}).limit(limit))
+    
+    # Check follow status for each user
+    for user in users:
+        follow_status = follows_collection.find_one({
+            "follower_id": current_user["_id"],
+            "following_id": user["_id"]
+        })
+        user["is_following"] = bool(follow_status)
+        user["created_at"] = user["created_at"].strftime("%Y-%m-%d")
+    
+    return users
+
+# NOTIFICATIONS ENDPOINTS
+
+@app.get("/api/notifications")
+async def get_notifications(current_user: dict = Depends(get_current_user), limit: int = 50):
+    """Get user notifications"""
+    notifications = list(notifications_collection.find({
+        "user_id": current_user["_id"]
+    }).sort("created_at", -1).limit(limit))
+    
+    # Format notifications
+    for notification in notifications:
+        notification["created_at"] = notification["created_at"].strftime("%Y-%m-%d %H:%M")
+    
+    return notifications
+
+@app.put("/api/notifications/{notification_id}/read")
+async def mark_notification_read(notification_id: str, current_user: dict = Depends(get_current_user)):
+    """Mark a notification as read"""
+    notification = notifications_collection.find_one({
+        "_id": notification_id,
+        "user_id": current_user["_id"]
+    })
+    
+    if not notification:
+        raise HTTPException(status_code=404, detail="Bildirim bulunamadı")
+    
+    notifications_collection.update_one(
+        {"_id": notification_id},
+        {"$set": {"read": True}}
+    )
+    
+    return {"success": True}
+
+@app.get("/api/notifications/unread-count")
+async def get_unread_notifications_count(current_user: dict = Depends(get_current_user)):
+    """Get count of unread notifications"""
+    count = notifications_collection.count_documents({
+        "user_id": current_user["_id"],
+        "read": False
+    })
+    
+    return {"count": count}
+
 # ADMIN ENDPOINTS
 
 @app.get("/api/admin/dashboard")
