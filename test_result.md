@@ -101,3 +101,109 @@
 #====================================================================================================
 # Testing Data - Main Agent and testing sub agent both should log testing data below this section
 #====================================================================================================
+
+## user_problem_statement: "Bu Zaradam projemi eksikleri tamamla Zaradam olarak uygulama ismini değiştir görsel imagelerini uygun olarak ekle ui bileşenlerinin profil fotoğrafı yükleme de ekleyelim aktivitelerin gizliliğini kullanıcı değiştirebilsin herkese açık ya da izli yapabilsin"
+
+## backend:
+  - task: "Change app name from Zarver to Zaradam in all backend references"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Identified task - need to update database name, API title, and all references"
+
+  - task: "Add profile photo upload API endpoint"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Need to implement file upload endpoint with base64 encoding"
+
+  - task: "Add activity privacy settings to decision model and API"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Need to add privacy controls - public/followers only"
+
+## frontend:
+  - task: "Change app name from Zarver to Zaradam in UI"
+    implemented: false
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Update all UI references from ZARVER to ZARADAM"
+
+  - task: "Add appropriate visual images using vision expert"
+    implemented: false
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Need to get relevant images for hero, features, and backgrounds"
+
+  - task: "Implement profile photo upload UI component"
+    implemented: false
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Add photo upload interface in profile section"
+
+  - task: "Add activity privacy toggle in decision creation"
+    implemented: false
+    working: "NA"
+    file: "frontend/src/App.js"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Allow users to set decisions as public or followers-only"
+
+## metadata:
+  created_by: "main_agent"
+  version: "1.0"
+  test_sequence: 0
+  run_ui: false
+
+## test_plan:
+  current_focus:
+    - "Change app name from Zarver to Zaradam in all backend references"
+    - "Change app name from Zarver to Zaradam in UI"
+  stuck_tasks: []
+  test_all: false
+  test_priority: "high_first"
+
+## agent_communication:
+    - agent: "main"
+      message: "Analyzed existing Zarver app - it's a decision-making app with AI-powered alternatives and dice rolling. Current features: user auth, admin panel, Gemini AI integration, decision history. Now implementing user requests: rename to Zaradam, add images, profile photo upload, and activity privacy controls."
