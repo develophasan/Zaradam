@@ -1,0 +1,80 @@
+version: '3.8'
+
+services:
+  mongodb:
+    image: mongo:7.0
+    container_name: zarver_mongodb
+    restart: unless-stopped
+    ports:
+      - "27017:27017"
+    environment:
+      MONGO_INITDB_ROOT_USERNAME: zarver
+      MONGO_INITDB_ROOT_PASSWORD: zarver123
+      MONGO_INITDB_DATABASE: zarver_db
+    volumes:
+      - mongodb_data:/data/db
+      - ./backend/init-mongo.js:/docker-entrypoint-initdb.d/init-mongo.js:ro
+    networks:
+      - zarver_network
+
+  redis:
+    image: redis:7.2-alpine
+    container_name: zarver_redis
+    restart: unless-stopped
+    ports:
+      - "6379:6379"
+    command: redis-server --requirepass zarver123
+    volumes:
+      - redis_data:/data
+    networks:
+      - zarver_network
+
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: zarver_backend
+    restart: unless-stopped
+    ports:
+      - "8001:8001"
+    environment:
+      - MONGO_URL=mongodb://zarver:zarver123@mongodb:27017/zarver_db?authSource=admin
+      - REDIS_URL=redis://:zarver123@redis:6379/0
+      - JWT_SECRET=zarver_super_secret_key_2024_production_ready
+      - GEMINI_API_KEY=${GEMINI_API_KEY}
+      - ADMIN_USERNAME=admin
+      - ADMIN_PASSWORD=${ADMIN_PASSWORD:-Hasan-1288}
+    depends_on:
+      - mongodb
+      - redis
+    volumes:
+      - ./backend:/app
+      - ./backend/logs:/app/logs
+    networks:
+      - zarver_network
+
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: zarver_frontend
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      - REACT_APP_BACKEND_URL=http://localhost:8001
+    depends_on:
+      - backend
+    volumes:
+      - ./frontend:/app
+      - /app/node_modules
+    networks:
+      - zarver_network
+
+volumes:
+  mongodb_data:
+  redis_data:
+
+networks:
+  zarver_network:
+    driver: bridge
