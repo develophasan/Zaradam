@@ -129,6 +129,116 @@ const apiCall = async (endpoint, options = {}) => {
   return response.data;
 };
 
+// Notification Bell Component
+const NotificationBell = () => {
+  const [unreadCount, setUnreadCount] = useState(0);
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
+  useEffect(() => {
+    fetchUnreadCount();
+    const interval = setInterval(fetchUnreadCount, 30000); // Check every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchUnreadCount = async () => {
+    try {
+      const data = await apiCall(`${API}/notifications/unread-count`);
+      setUnreadCount(data.count);
+    } catch (error) {
+      console.error('Failed to fetch unread count:', error);
+    }
+  };
+
+  const fetchNotifications = async () => {
+    try {
+      const data = await apiCall(`${API}/notifications`);
+      setNotifications(data);
+    } catch (error) {
+      console.error('Failed to fetch notifications:', error);
+    }
+  };
+
+  const markAsRead = async (notificationId) => {
+    try {
+      await apiCall(`${API}/notifications/${notificationId}/read`, {
+        method: 'PUT'
+      });
+      fetchUnreadCount();
+      fetchNotifications();
+    } catch (error) {
+      console.error('Failed to mark notification as read:', error);
+    }
+  };
+
+  const handleBellClick = async () => {
+    if (!showNotifications) {
+      await fetchNotifications();
+    }
+    setShowNotifications(!showNotifications);
+  };
+
+  return (
+    <div className="relative">
+      <button
+        onClick={handleBellClick}
+        className="relative text-white hover:text-zinc-400 transition-colors"
+      >
+        <span className="text-xl">🔔</span>
+        {unreadCount > 0 && (
+          <span className="absolute -top-1 -right-1 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+            {unreadCount > 9 ? '9+' : unreadCount}
+          </span>
+        )}
+      </button>
+
+      {showNotifications && (
+        <div className="absolute right-0 top-8 w-80 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 max-h-96 overflow-hidden">
+          <div className="p-4 border-b border-zinc-800">
+            <h3 className="font-bold text-white">Bildirimler</h3>
+          </div>
+          
+          <div className="max-h-80 overflow-y-auto">
+            {notifications.length === 0 ? (
+              <div className="p-4 text-center text-zinc-400">
+                Henüz bildiriminiz yok
+              </div>
+            ) : (
+              notifications.map((notification, index) => (
+                <div
+                  key={index}
+                  onClick={() => !notification.read && markAsRead(notification._id)}
+                  className={`p-4 border-b border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors ${
+                    !notification.read ? 'bg-zinc-800' : ''
+                  }`}
+                >
+                  <div className="flex items-start space-x-3">
+                    <div className="text-2xl">
+                      {notification.type === 'message' ? '💬' : 
+                       notification.type === 'follow' ? '👥' : '🔔'}
+                    </div>
+                    <div className="flex-1">
+                      <p className={`text-sm ${notification.read ? 'text-zinc-400' : 'text-white font-medium'}`}>
+                        {notification.content}
+                      </p>
+                      <p className="text-xs text-zinc-500 mt-1">
+                        {notification.created_at}
+                      </p>
+                    </div>
+                    {!notification.read && (
+                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                    )}
+                  </div>
+                </div>
+              ))
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
 // Privacy Agreement Modal
 const PrivacyModal = ({ isOpen, onAccept, onDecline }) => {
   if (!isOpen) return null;
