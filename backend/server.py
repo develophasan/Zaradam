@@ -16,7 +16,7 @@ import uuid
 
 # Environment variables
 MONGO_URL = os.environ.get('MONGO_URL', 'mongodb://localhost:27017')
-JWT_SECRET = "zarver_secret_key_2024"
+JWT_SECRET = "zaradam_secret_key_2024"
 JWT_ALGORITHM = "HS256"
 GEMINI_API_KEY = "AIzaSyC6dkkM1DEyTMzYuBCkm9kSK-zlx1Pp1eU"
 
