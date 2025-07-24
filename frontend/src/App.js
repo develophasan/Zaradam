@@ -1746,11 +1746,20 @@ const ProfilePage = () => {
               </div>
               <button
                 onClick={() => setShowPhotoUpload(true)}
-                className="absolute -bottom-2 -right-2 w-8 h-8 bg-white text-black rounded-full flex items-center justify-center text-sm font-bold hover:bg-zinc-200 transition-colors border-2 border-zinc-900"
+                className="absolute -bottom-1 -right-1 w-10 h-10 bg-blue-600 text-white rounded-full flex items-center justify-center text-lg font-bold hover:bg-blue-500 transition-colors border-2 border-zinc-900 shadow-lg"
+                title="Fotoğrafı Değiştir"
               >
                 📷
               </button>
             </div>
+            
+            {/* Alternative: Add a text button as well */}
+            <button
+              onClick={() => setShowPhotoUpload(true)}
+              className="mb-4 text-blue-400 hover:text-blue-300 text-sm font-medium transition-colors"
+            >
+              Profil Fotoğrafını Değiştir
+            </button>
             <h2 className="text-xl font-bold text-white">{user?.name}</h2>
             <p className="text-zinc-400">@{user?.username}</p>
           </div>
