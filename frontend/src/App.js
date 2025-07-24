@@ -221,11 +221,19 @@ const OnboardingPage = () => {
   }, [user, navigate]);
 
   return (
-    <div className="min-h-screen bg-black flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-zinc-900 rounded-2xl shadow-2xl p-8 text-center border border-zinc-800">
+    <div className="min-h-screen bg-black flex items-center justify-center p-4 relative overflow-hidden">
+      {/* Background Hero Image */}
+      <div 
+        className="absolute inset-0 bg-cover bg-center opacity-20"
+        style={{
+          backgroundImage: "url('https://images.unsplash.com/photo-1605870445919-838d190e8e1b?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2NDJ8MHwxfHNlYXJjaHwxfHxkaWNlfGVufDB8fHxibHVlfDE3NTMzNjc0MDV8MA&ixlib=rb-4.1.0&q=85')"
+        }}
+      ></div>
+      
+      <div className="max-w-md w-full bg-zinc-900 rounded-2xl shadow-2xl p-8 text-center border border-zinc-800 relative z-10">
         <div className="mb-8">
           <div className="w-20 h-20 bg-white rounded-2xl mx-auto mb-6 flex items-center justify-center text-4xl dice-shadow">
-            ⚫
+            🎲
           </div>
           <h1 className="text-4xl font-bold text-white mb-3">ZARADAM</h1>
           <p className="text-zinc-400 text-lg">Kararsızlıklarını zar ile çöz</p>
@@ -233,8 +241,13 @@ const OnboardingPage = () => {
         
         <div className="space-y-6 mb-8">
           <div className="flex items-start space-x-4 text-left">
-            <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center flex-shrink-0 border border-zinc-700">
-              🤖
+            <div 
+              className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center flex-shrink-0 border border-zinc-700 bg-cover bg-center"
+              style={{
+                backgroundImage: "url('https://images.unsplash.com/photo-1697577418970-95d99b5a55cf?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxhcnRpZmljaWFsJTIwaW50ZWxsaWdlbmNlfGVufDB8fHx8MTc1MzM2NzQ0NXww&ixlib=rb-4.1.0&q=85')"
+              }}
+            >
+              <span className="text-white bg-black bg-opacity-50 w-full h-full flex items-center justify-center rounded-xl">🤖</span>
             </div>
             <div>
               <h3 className="font-bold text-white text-lg">AI Destekli Çözümler</h3>
@@ -253,8 +266,13 @@ const OnboardingPage = () => {
           </div>
           
           <div className="flex items-start space-x-4 text-left">
-            <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center flex-shrink-0 border border-zinc-700">
-              👥
+            <div 
+              className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center flex-shrink-0 border border-zinc-700 bg-cover bg-center"
+              style={{
+                backgroundImage: "url('https://images.unsplash.com/photo-1611162617213-7d7a39e9b1d7?crop=entropy&cs=srgb&fm=jpg&ixid=M3w3NDQ2MzR8MHwxfHNlYXJjaHwxfHxzb2NpYWwlMjBtZWRpYXxlbnwwfHx8fDE3NTMyOTk1Nzh8MA&ixlib=rb-4.1.0&q=85')"
+              }}
+            >
+              <span className="text-white bg-black bg-opacity-50 w-full h-full flex items-center justify-center rounded-xl">👥</span>
             </div>
             <div>
               <h3 className="font-bold text-white text-lg">Sosyal Deneyim</h3>
