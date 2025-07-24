@@ -2740,6 +2740,206 @@ const SubscriptionPage = () => {
   );
 };
 
+// User Profile Page (for viewing other users)
+const UserProfilePage = () => {
+  const navigate = useNavigate();
+  const { user: currentUser } = useAuth();
+  const { userId } = useParams();
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [isFollowing, setIsFollowing] = useState(false);
+  const [followLoading, setFollowLoading] = useState(false);
+
+  useEffect(() => {
+    if (userId) {
+      fetchUserProfile();
+    }
+  }, [userId]);
+
+  const fetchUserProfile = async () => {
+    try {
+      // Get user info from search to check follow status
+      const searchResults = await apiCall(`${API}/users/search?q=${userId}`);
+      const foundUser = searchResults.find(u => u._id === userId);
+      
+      if (foundUser) {
+        setUser(foundUser);
+        setIsFollowing(foundUser.is_following);
+      } else {
+        throw new Error('Kullanıcı bulunamadı');
+      }
+    } catch (error) {
+      console.error('Failed to fetch user profile:', error);
+      alert('Kullanıcı profili yüklenemedi');
+      navigate(-1);
+    }
+    setLoading(false);
+  };
+
+  const handleFollowToggle = async () => {
+    if (followLoading) return;
+    
+    setFollowLoading(true);
+    try {
+      if (isFollowing) {
+        await apiCall(`${API}/users/unfollow/${userId}`, {
+          method: 'DELETE'
+        });
+        setIsFollowing(false);
+        alert('Takibi bıraktınız');
+      } else {
+        await apiCall(`${API}/users/follow`, {
+          method: 'POST',
+          data: { target_user_id: userId }
+        });
+        setIsFollowing(true);
+        alert('Kullanıcı takip edildi!');
+      }
+    } catch (error) {
+      console.error('Failed to toggle follow:', error);
+      alert('İşlem başarısız: ' + (error.response?.data?.detail || error.message));
+    }
+    setFollowLoading(false);
+  };
+
+  const handleSendMessage = () => {
+    if (!isFollowing) {
+      alert('Mesaj göndermek için önce takip etmelisiniz');
+      return;
+    }
+    
+    // Navigate to messages page with user info
+    navigate('/messages', { 
+      state: { 
+        startConversation: {
+          partner: {
+            id: user._id,
+            name: user.name,
+            username: user.username,
+            avatar: user.avatar
+          }
+        }
+      }
+    });
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="dice-loader">
+          <div className="dice-face">🎲</div>
+        </div>
+      </div>
+    );
+  }
+
+  if (!user) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white">Kullanıcı bulunamadı</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black">
+      <header className="bg-zinc-900 border-b border-zinc-800">
+        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+          <button onClick={() => navigate(-1)} className="text-2xl text-white hover:text-zinc-400">←</button>
+          <h1 className="text-xl font-bold text-white">PROFİL</h1>
+          <div></div>
+        </div>
+      </header>
+
+      <div className="max-w-lg mx-auto p-4 pb-24">
+        {/* User Profile Info */}
+        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 mb-6">
+          <div className="text-center mb-6">
+            <div className="w-24 h-24 mx-auto mb-4 rounded-xl overflow-hidden border-2 border-zinc-700">
+              <img 
+                src={user.avatar || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face"} 
+                alt="Profile" 
+                className="w-full h-full object-cover" 
+              />
+            </div>
+            
+            <h2 className="text-xl font-bold text-white">{user.name}</h2>
+            <p className="text-zinc-400">@{user.username}</p>
+            <p className="text-zinc-500 text-sm mt-1">Katılım: {user.created_at}</p>
+            
+            {user.subscription?.is_premium && (
+              <div className="mt-2">
+                <span className="bg-yellow-900 text-yellow-300 px-3 py-1 rounded-full text-xs font-bold border border-yellow-700">
+                  ✨ Premium Üye
+                </span>
+              </div>
+            )}
+          </div>
+
+          <div className="grid grid-cols-3 gap-4 mb-6">
+            <div className="text-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+              <div className="text-2xl font-bold text-white">{user.stats?.total_decisions || 0}</div>
+              <div className="text-sm text-zinc-400">Karar</div>
+            </div>
+            <div className="text-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+              <div className="text-2xl font-bold text-white">{user.stats?.followers || 0}</div>
+              <div className="text-sm text-zinc-400">Takipçi</div>
+            </div>
+            <div className="text-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+              <div className="text-2xl font-bold text-white">{user.stats?.following || 0}</div>
+              <div className="text-sm text-zinc-400">Takip</div>
+            </div>
+          </div>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <button
+              onClick={handleFollowToggle}
+              disabled={followLoading}
+              className={`w-full py-3 rounded-xl font-bold transition-colors disabled:opacity-50 ${
+                isFollowing
+                  ? 'bg-zinc-700 text-white border border-zinc-600 hover:bg-zinc-600'
+                  : 'bg-blue-600 text-white hover:bg-blue-500'
+              }`}
+            >
+              {followLoading ? 'İşleniyor...' : (isFollowing ? '✓ Takip Ediliyor' : '+ Takip Et')}
+            </button>
+            
+            <button
+              onClick={handleSendMessage}
+              disabled={!isFollowing}
+              className={`w-full py-3 rounded-xl font-bold transition-colors ${
+                isFollowing
+                  ? 'bg-green-600 text-white hover:bg-green-500'
+                  : 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
+              }`}
+            >
+              💬 Mesaj Gönder
+            </button>
+            
+            {!isFollowing && (
+              <p className="text-center text-zinc-500 text-xs">
+                Mesaj göndermek için önce takip etmelisiniz
+              </p>
+            )}
+          </div>
+        </div>
+
+        {/* Public Decisions - if any */}
+        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+          <h3 className="text-lg font-bold text-white mb-4">Herkese Açık Kararlar</h3>
+          <div className="text-center py-8 text-zinc-400">
+            <div className="text-4xl mb-2">🤐</div>
+            <p>Bu kullanıcının herkese açık kararı bulunmuyor</p>
+          </div>
+        </div>
+      </div>
+
+      <BottomNavigation />
+    </div>
+  );
+};
+
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
