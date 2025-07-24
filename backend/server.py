@@ -279,6 +279,15 @@ async def register(user_data: UserRegister):
             "success_rate": 0,
             "followers": 0,
             "following": 0
+        },
+        "subscription": {
+            "daily_queries": 3,
+            "queries_used_today": 0,
+            "last_query_date": datetime.now().strftime("%Y-%m-%d"),
+            "is_premium": False,
+            "subscription_id": None,
+            "next_payment_date": None,
+            "subscription_status": "inactive"
         }
     }
     
