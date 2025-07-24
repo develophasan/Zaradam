@@ -43,9 +43,18 @@ const AuthProvider = ({ children }) => {
     return userData;
   };
 
-  const register = async (username, email, password, name) => {
+  const adminLogin = async (username, password) => {
+    const response = await axios.post(`${API}/auth/admin/login`, { username, password });
+    const { access_token, user: userData } = response.data;
+    localStorage.setItem('token', access_token);
+    setToken(access_token);
+    setUser(userData);
+    return userData;
+  };
+
+  const register = async (username, email, password, name, privacyAgreement) => {
     const response = await axios.post(`${API}/auth/register`, {
-      username, email, password, name
+      username, email, password, name, privacy_agreement: privacyAgreement
     });
     const { access_token, user: userData } = response.data;
     localStorage.setItem('token', access_token);
@@ -62,7 +71,7 @@ const AuthProvider = ({ children }) => {
 
   return (
     <AuthContext.Provider value={{
-      user, login, register, logout, loading,
+      user, login, adminLogin, register, logout, loading,
       token, setUser
     }}>
       {children}
@@ -87,6 +96,23 @@ const ProtectedRoute = ({ children }) => {
   return user ? children : <Navigate to="/" />;
 };
 
+// Admin Route
+const AdminRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="dice-loader">
+          <div className="dice-face">🎲</div>
+        </div>
+      </div>
+    );
+  }
+  
+  return user?.is_admin ? children : <Navigate to="/" />;
+};
+
 // API Helper
 const apiCall = async (endpoint, options = {}) => {
   const token = localStorage.getItem('token');
@@ -103,13 +129,95 @@ const apiCall = async (endpoint, options = {}) => {
   return response.data;
 };
 
+// Privacy Agreement Modal
+const PrivacyModal = ({ isOpen, onAccept, onDecline }) => {
+  if (!isOpen) return null;
+
+  return (
+    <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+      <div className="bg-zinc-900 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-zinc-800">
+        <div className="p-6 border-b border-zinc-800">
+          <h2 className="text-2xl font-bold text-white">Kişisel Verilerin İşlenmesi Sözleşmesi</h2>
+        </div>
+        
+        <div className="p-6 overflow-y-auto max-h-96 text-zinc-300 text-sm leading-relaxed">
+          <h3 className="text-white font-bold mb-4">ZARVER - KİŞİSEL VERİLERİN İŞLENMESİ AYDINLATMA METNİ</h3>
+          
+          <div className="space-y-4">
+            <div>
+              <h4 className="text-white font-semibold mb-2">1. Veri Sorumlusu</h4>
+              <p>Zarver Uygulaması, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca veri sorumlusu sıfatıyla hareket etmektedir.</p>
+            </div>
+            
+            <div>
+              <h4 className="text-white font-semibold mb-2">2. İşlenen Kişisel Veriler</h4>
+              <p>• İsim, soyisim ve kullanıcı adı bilgileriniz<br/>
+              • E-posta adresiniz<br/>
+              • IP adresiniz ve kullanım logları<br/>
+              • Uygulama içinde oluşturduğunuz karar metinleri<br/>
+              • Mesajlaşma ve etkileşim verileri</p>
+            </div>
+            
+            <div>
+              <h4 className="text-white font-semibold mb-2">3. İşleme Amaçları</h4>
+              <p>• Hizmet sunumunun sağlanması<br/>
+              • Kullanıcı deneyiminin iyileştirilmesi<br/>
+              • Yasal yükümlülüklerinin yerine getirilmesi<br/>
+              • Güvenlik tedbirlerinin alınması</p>
+            </div>
+            
+            <div>
+              <h4 className="text-white font-semibold mb-2">4. Veri Aktarımı</h4>
+              <p>Kişisel verileriniz, yasal zorunluluklar çerçevesinde yetkili kurum ve kuruluşlarla paylaşılabilir. Bu durumda kullanıcılar bilgilendirilecektir.</p>
+            </div>
+            
+            <div>
+              <h4 className="text-white font-semibold mb-2">5. Saklama Süresi</h4>
+              <p>Verileriniz, işleme amacının gerektirdiği süre boyunca ve yasal saklama yükümlülükleri çerçevesinde saklanır.</p>
+            </div>
+            
+            <div>
+              <h4 className="text-white font-semibold mb-2">6. Haklarınız</h4>
+              <p>KVKK kapsamında, verilerinizin işlenip işlenmediğini öğrenme, düzeltme, silme talep etme haklarınız bulunmaktadır.</p>
+            </div>
+            
+            <div className="bg-red-900 border border-red-700 p-4 rounded-xl">
+              <h4 className="text-red-300 font-semibold mb-2">⚠️ ÖNEMLİ UYARI</h4>
+              <p className="text-red-200">Bu sözleşmeyi kabul etmekle, yukarıda belirtilen amaçlarla kişisel verilerinizin işlenmesine ve yasal zorunluluklar çerçevesinde paylaşılmasına onay vermiş olursunuz.</p>
+            </div>
+          </div>
+        </div>
+        
+        <div className="p-6 border-t border-zinc-800 flex space-x-4">
+          <button
+            onClick={onDecline}
+            className="flex-1 bg-zinc-700 text-white py-3 rounded-xl font-bold hover:bg-zinc-600 transition-colors border border-zinc-600"
+          >
+            REDDET
+          </button>
+          <button
+            onClick={onAccept}
+            className="flex-1 bg-white text-black py-3 rounded-xl font-bold hover:bg-zinc-200 transition-colors"
+          >
+            KABUL EDİYORUM
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // Onboarding/Login Sayfası
 const OnboardingPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   
   useEffect(() => {
-    if (user) navigate('/home');
+    if (user?.is_admin) {
+      navigate('/admin');
+    } else if (user) {
+      navigate('/home');
+    }
   }, [user, navigate]);
 
   return (
@@ -169,7 +277,97 @@ const OnboardingPage = () => {
           >
             KAYIT OL
           </button>
+          
+          <button 
+            onClick={() => navigate('/admin-login')}
+            className="w-full bg-red-900 text-white py-2 rounded-xl font-bold text-sm hover:bg-red-800 transition-all duration-200 border border-red-700"
+          >
+            🔒 ADMİN GİRİŞİ
+          </button>
         </div>
+      </div>
+    </div>
+  );
+};
+
+// Admin Giriş Sayfası
+const AdminLoginPage = () => {
+  const navigate = useNavigate();
+  const { adminLogin } = useAuth();
+  const [username, setUsername] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    
+    try {
+      await adminLogin(username, password);
+      navigate('/admin');
+    } catch (error) {
+      setError(error.response?.data?.detail || "Admin giriş başarısız");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-zinc-900 rounded-2xl shadow-2xl p-8 border border-zinc-800">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-red-900 rounded-xl mx-auto mb-4 flex items-center justify-center text-2xl border border-red-700">
+            🔒
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Admin Girişi</h1>
+          <p className="text-zinc-400">Yönetici paneline erişim</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <input
+              type="text"
+              placeholder="Kullanıcı Adı"
+              value={username}
+              onChange={(e) => setUsername(e.target.value)}
+              className="w-full p-4 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-red-500 focus:outline-none"
+              required
+            />
+          </div>
+          
+          <div>
+            <input
+              type="password"
+              placeholder="Şifre"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-4 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-red-500 focus:outline-none"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-900 border border-red-700 text-red-300 p-3 rounded-xl">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-red-900 text-white py-4 rounded-xl font-bold text-lg hover:bg-red-800 transition-all duration-200 disabled:opacity-50 border border-red-700"
+          >
+            {loading ? "GİRİŞ YAPILIYOR..." : "ADMİN GİRİŞİ"}
+          </button>
+        </form>
+
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4 text-zinc-400 hover:text-white text-2xl"
+        >
+          ←
+        </button>
       </div>
     </div>
   );
@@ -279,14 +477,21 @@ const RegisterPage = () => {
   });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showPrivacyModal, setShowPrivacyModal] = useState(false);
+  const [privacyAccepted, setPrivacyAccepted] = useState(false);
 
   const handleRegister = async (e) => {
     e.preventDefault();
+    if (!privacyAccepted) {
+      setShowPrivacyModal(true);
+      return;
+    }
+    
     setLoading(true);
     setError("");
     
     try {
-      await register(formData.username, formData.email, formData.password, formData.name);
+      await register(formData.username, formData.email, formData.password, formData.name, privacyAccepted);
       navigate('/home');
     } catch (error) {
       setError(error.response?.data?.detail || "Kayıt başarısız");
@@ -301,6 +506,19 @@ const RegisterPage = () => {
     });
   };
 
+  const handlePrivacyAccept = () => {
+    setPrivacyAccepted(true);
+    setShowPrivacyModal(false);
+    // Form submit işlemini tetikle
+    const form = document.getElementById('register-form');
+    form.dispatchEvent(new Event('submit', { cancelable: true, bubbles: true }));
+  };
+
+  const handlePrivacyDecline = () => {
+    setShowPrivacyModal(false);
+    setPrivacyAccepted(false);
+  };
+
   return (
     <div className="min-h-screen bg-black flex items-center justify-center p-4">
       <div className="max-w-md w-full bg-zinc-900 rounded-2xl shadow-2xl p-8 border border-zinc-800">
@@ -312,7 +530,7 @@ const RegisterPage = () => {
           <p className="text-zinc-400">Yeni hesap oluştur</p>
         </div>
 
-        <form onSubmit={handleRegister} className="space-y-4">
+        <form id="register-form" onSubmit={handleRegister} className="space-y-4">
           <input
             type="text"
             name="name"
@@ -359,6 +577,27 @@ const RegisterPage = () => {
             </div>
           )}
 
+          <div className="bg-zinc-800 border border-zinc-700 p-4 rounded-xl">
+            <label className="flex items-start space-x-3">
+              <input
+                type="checkbox"
+                checked={privacyAccepted}
+                onChange={(e) => setPrivacyAccepted(e.target.checked)}
+                className="mt-1 w-4 h-4 text-white bg-zinc-700 border-zinc-600 rounded focus:ring-white"
+              />
+              <span className="text-sm text-zinc-300">
+                <button
+                  type="button"
+                  onClick={() => setShowPrivacyModal(true)}
+                  className="text-white hover:underline font-semibold"
+                >
+                  Kişisel Verilerin İşlenmesi Sözleşmesi
+                </button>
+                'ni okudum ve kabul ediyorum.
+              </span>
+            </label>
+          </div>
+
           <button
             type="submit"
             disabled={loading}
@@ -384,11 +623,387 @@ const RegisterPage = () => {
           ←
         </button>
       </div>
+
+      <PrivacyModal 
+        isOpen={showPrivacyModal}
+        onAccept={handlePrivacyAccept}
+        onDecline={handlePrivacyDecline}
+      />
     </div>
   );
 };
 
-// Ana Sayfa
+// Admin Dashboard
+const AdminDashboard = () => {
+  const navigate = useNavigate();
+  const { logout } = useAuth();
+  const [dashboardData, setDashboardData] = useState(null);
+  const [users, setUsers] = useState([]);
+  const [logs, setLogs] = useState([]);
+  const [activeTab, setActiveTab] = useState('dashboard');
+  const [loading, setLoading] = useState(true);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedUser, setSelectedUser] = useState(null);
+
+  useEffect(() => {
+    fetchDashboardData();
+  }, []);
+
+  const fetchDashboardData = async () => {
+    try {
+      const [dashboard, userList, logList] = await Promise.all([
+        apiCall(`${API}/admin/dashboard`),
+        apiCall(`${API}/admin/users?limit=100`),
+        apiCall(`${API}/admin/logs?limit=50`)
+      ]);
+      
+      setDashboardData(dashboard);
+      setUsers(userList);
+      setLogs(logList);
+    } catch (error) {
+      console.error('Failed to fetch admin data:', error);
+    }
+    setLoading(false);
+  };
+
+  const suspendUser = async (userId, reason, days) => {
+    try {
+      await apiCall(`${API}/admin/users/${userId}/suspend`, {
+        method: 'POST',
+        data: { user_id: userId, reason, duration_days: parseInt(days) }
+      });
+      fetchDashboardData(); // Refresh data
+      alert('Kullanıcı başarıyla askıya alındı');
+    } catch (error) {
+      alert('Askıya alma işlemi başarısız: ' + error.response?.data?.detail);
+    }
+  };
+
+  const unsuspendUser = async (userId) => {
+    try {
+      await apiCall(`${API}/admin/users/${userId}/unsuspend`, {
+        method: 'POST'
+      });
+      fetchDashboardData(); // Refresh data
+      alert('Kullanıcı askısı başarıyla kaldırıldı');
+    } catch (error) {
+      alert('Askı kaldırma işlemi başarısız: ' + error.response?.data?.detail);
+    }
+  };
+
+  const exportUserData = async () => {
+    if (!confirm('Kullanıcı verilerini export etmek istediğinizden emin misiniz? Bu işlem loglanacaktır.')) {
+      return;
+    }
+    
+    try {
+      const data = await apiCall(`${API}/admin/export/users`);
+      
+      // JSON dosyasını indir
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `zarver_export_${new Date().toISOString().split('T')[0]}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      
+      alert('Veri export işlemi tamamlandı ve loglandı');
+      fetchDashboardData(); // Refresh logs
+    } catch (error) {
+      alert('Export işlemi başarısız: ' + error.response?.data?.detail);
+    }
+  };
+
+  const filteredUsers = users.filter(user => 
+    user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    user.email.toLowerCase().includes(searchTerm.toLowerCase())
+  );
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="text-white text-xl">Yükleniyor...</div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black">
+      {/* Header */}
+      <header className="bg-zinc-900 border-b border-zinc-800">
+        <div className="max-w-6xl mx-auto px-4 py-4 flex items-center justify-between">
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-red-900 rounded-lg flex items-center justify-center text-lg border border-red-700">
+              🔒
+            </div>
+            <h1 className="text-2xl font-bold text-white">ZARVER ADMİN</h1>
+          </div>
+          <div className="flex items-center space-x-4">
+            <span className="text-zinc-400">Admin Panel</span>
+            <button
+              onClick={logout}
+              className="bg-red-900 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition-colors border border-red-700"
+            >
+              Çıkış
+            </button>
+          </div>
+        </div>
+      </header>
+
+      <div className="max-w-6xl mx-auto p-4">
+        {/* Tab Navigation */}
+        <div className="flex space-x-1 mb-6 bg-zinc-900 p-1 rounded-xl border border-zinc-800">
+          {[
+            { key: 'dashboard', label: '📊 Dashboard', },
+            { key: 'users', label: '👥 Kullanıcılar' },
+            { key: 'logs', label: '📋 Loglar' },
+            { key: 'export', label: '📤 Export' }
+          ].map((tab) => (
+            <button
+              key={tab.key}
+              onClick={() => setActiveTab(tab.key)}
+              className={`flex-1 py-3 px-4 rounded-lg font-semibold transition-colors ${
+                activeTab === tab.key
+                  ? 'bg-white text-black'
+                  : 'text-zinc-400 hover:text-white hover:bg-zinc-800'
+              }`}
+            >
+              {tab.label}
+            </button>
+          ))}
+        </div>
+
+        {/* Dashboard Tab */}
+        {activeTab === 'dashboard' && dashboardData && (
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
+            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+              <div className="text-3xl font-bold text-white mb-2">{dashboardData.stats.total_users}</div>
+              <div className="text-zinc-400">Toplam Kullanıcı</div>
+            </div>
+            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+              <div className="text-3xl font-bold text-green-400 mb-2">{dashboardData.stats.active_users}</div>
+              <div className="text-zinc-400">Aktif Kullanıcı</div>
+            </div>
+            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+              <div className="text-3xl font-bold text-red-400 mb-2">{dashboardData.stats.suspended_users}</div>
+              <div className="text-zinc-400">Askıya Alınmış</div>
+            </div>
+            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+              <div className="text-3xl font-bold text-blue-400 mb-2">{dashboardData.stats.total_decisions}</div>
+              <div className="text-zinc-400">Toplam Karar</div>
+            </div>
+          </div>
+        )}
+
+        {/* Users Tab */}
+        {activeTab === 'users' && (
+          <div className="space-y-6">
+            <div className="flex items-center space-x-4">
+              <input
+                type="text"
+                placeholder="Kullanıcı ara..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="flex-1 p-3 bg-zinc-900 text-white rounded-xl border border-zinc-800 focus:border-white focus:outline-none"
+              />
+            </div>
+
+            <div className="space-y-4">
+              {filteredUsers.map(user => (
+                <div key={user._id} className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+                  <div className="flex items-center justify-between">
+                    <div className="flex items-center space-x-4">
+                      <img 
+                        src={user.avatar} 
+                        alt={user.name}
+                        className="w-12 h-12 rounded-xl object-cover border border-zinc-700"
+                      />
+                      <div>
+                        <h3 className="text-white font-bold">{user.name}</h3>
+                        <p className="text-zinc-400">@{user.username} • {user.email}</p>
+                        <p className="text-sm text-zinc-500">Kayıt: {user.created_at}</p>
+                        {user.is_suspended && (
+                          <p className="text-red-400 text-sm font-semibold">
+                            ⚠️ ASKİYA ALINMIŞ: {user.suspension_reason}
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                    
+                    <div className="flex items-center space-x-2">
+                      {user.is_suspended ? (
+                        <button
+                          onClick={() => unsuspendUser(user._id)}
+                          className="bg-green-900 text-white px-4 py-2 rounded-lg hover:bg-green-800 transition-colors border border-green-700"
+                        >
+                          Askıyı Kaldır
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            const reason = prompt('Askıya alma sebebi:');
+                            const days = prompt('Askı süresi (gün, 0=kalıcı):');
+                            if (reason && days !== null) {
+                              suspendUser(user._id, reason, days);
+                            }
+                          }}
+                          className="bg-red-900 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition-colors border border-red-700"
+                        >
+                          Askıya Al
+                        </button>
+                      )}
+                      
+                      <button
+                        onClick={() => setSelectedUser(user)}
+                        className="bg-blue-900 text-white px-4 py-2 rounded-lg hover:bg-blue-800 transition-colors border border-blue-700"
+                      >
+                        Detaylar
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
+
+        {/* Logs Tab */}
+        {activeTab === 'logs' && (
+          <div className="space-y-4">
+            <h2 className="text-2xl font-bold text-white mb-4">Admin İşlem Logları</h2>
+            {logs.map(log => (
+              <div key={log._id} className="bg-zinc-900 p-4 rounded-xl border border-zinc-800">
+                <div className="flex items-center justify-between mb-2">
+                  <span className="text-white font-semibold">{log.action}</span>
+                  <span className="text-zinc-400 text-sm">{log.timestamp}</span>
+                </div>
+                <div className="text-zinc-300">
+                  Admin: {log.admin_id} | Hedef: {log.target_user_id || 'N/A'}
+                </div>
+                {log.details && Object.keys(log.details).length > 0 && (
+                  <div className="mt-2 text-sm text-zinc-400">
+                    Detaylar: {JSON.stringify(log.details)}
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        )}
+
+        {/* Export Tab */}
+        {activeTab === 'export' && (
+          <div className="space-y-6">
+            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+              <h2 className="text-2xl font-bold text-white mb-4">Veri Export İşlemleri</h2>
+              <div className="bg-red-900 border border-red-700 p-4 rounded-xl mb-6">
+                <h3 className="text-red-300 font-bold mb-2">⚠️ ÖNEMLİ UYARI</h3>
+                <p className="text-red-200">
+                  Bu işlem tüm kullanıcı verilerini export eder ve yasal makamlarla paylaşım için kullanılır. 
+                  Her export işlemi loglanır ve izlenebilir.
+                </p>
+              </div>
+              
+              <button
+                onClick={exportUserData}
+                className="bg-orange-900 text-white px-6 py-3 rounded-xl font-bold hover:bg-orange-800 transition-colors border border-orange-700"
+              >
+                📤 TÜM KULLANICI VERİLERİNİ EXPORT ET
+              </button>
+              
+              <div className="mt-6 text-sm text-zinc-400">
+                <p>Export edilen veriler:</p>
+                <ul className="list-disc list-inside mt-2 space-y-1">
+                  <li>Kullanıcı profil bilgileri</li>
+                  <li>E-posta adresleri ve kayıt tarihleri</li>
+                  <li>Tüm karar metinleri ve seçimleri</li>
+                  <li>Uygulama kullanım istatistikleri</li>
+                  <li>Hesap durumları ve askı bilgileri</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        )}
+      </div>
+
+      {/* User Detail Modal */}
+      {selectedUser && (
+        <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+          <div className="bg-zinc-900 rounded-2xl max-w-2xl w-full max-h-[80vh] overflow-hidden border border-zinc-800">
+            <div className="p-6 border-b border-zinc-800 flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-white">Kullanıcı Detayları</h2>
+              <button
+                onClick={() => setSelectedUser(null)}
+                className="text-zinc-400 hover:text-white text-2xl"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="p-6 overflow-y-auto">
+              <div className="flex items-center space-x-4 mb-6">
+                <img 
+                  src={selectedUser.avatar} 
+                  alt={selectedUser.name}
+                  className="w-16 h-16 rounded-xl object-cover border border-zinc-700"
+                />
+                <div>
+                  <h3 className="text-xl font-bold text-white">{selectedUser.name}</h3>
+                  <p className="text-zinc-400">@{selectedUser.username}</p>
+                  <p className="text-zinc-400">{selectedUser.email}</p>
+                </div>
+              </div>
+              
+              <div className="grid grid-cols-2 gap-4 mb-6">
+                <div className="bg-zinc-800 p-4 rounded-xl border border-zinc-700">
+                  <div className="text-2xl font-bold text-white">{selectedUser.stats?.total_decisions || 0}</div>
+                  <div className="text-zinc-400">Toplam Karar</div>
+                </div>
+                <div className="bg-zinc-800 p-4 rounded-xl border border-zinc-700">
+                  <div className="text-2xl font-bold text-white">{selectedUser.stats?.success_rate || 0}%</div>
+                  <div className="text-zinc-400">Başarı Oranı</div>
+                </div>
+              </div>
+              
+              <div className="space-y-4">
+                <div>
+                  <label className="text-white font-semibold">Kayıt Tarihi:</label>
+                  <p className="text-zinc-400">{selectedUser.created_at}</p>
+                </div>
+                
+                <div>
+                  <label className="text-white font-semibold">Hesap Durumu:</label>
+                  <p className={selectedUser.is_suspended ? "text-red-400" : "text-green-400"}>
+                    {selectedUser.is_suspended ? "Askıya Alınmış" : "Aktif"}
+                  </p>
+                </div>
+                
+                {selectedUser.is_suspended && (
+                  <div>
+                    <label className="text-white font-semibold">Askı Sebebi:</label>
+                    <p className="text-red-400">{selectedUser.suspension_reason}</p>
+                  </div>
+                )}
+                
+                <div>
+                  <label className="text-white font-semibold">Kişisel Veri Sözleşmesi:</label>
+                  <p className="text-green-400">
+                    {selectedUser.privacy_agreement_accepted ? "Kabul Edildi" : "Kabul Edilmemiş"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+};
+
+// Ana Sayfa ve diğer bileşenler aynı kalacak (mevcut kod)
 const HomePage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -524,7 +1139,10 @@ const HomePage = () => {
   );
 };
 
-// Zar Atma Sayfası
+// Diğer bileşenler aynı kalacak (DicePage, ResultPage, HistoryPage, ProfilePage, MessagesPage, BottomNavigation)
+// [Mevcut kodun devamı...]
+// [Önceki bileşenler buraya gelecek - DicePage, ResultPage, HistoryPage, ProfilePage, MessagesPage, BottomNavigation]
+
 const DicePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -647,7 +1265,6 @@ const DicePage = () => {
   );
 };
 
-// Sonuç Sayfası
 const ResultPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -757,7 +1374,6 @@ const ResultPage = () => {
   );
 };
 
-// Geçmiş Sayfası
 const HistoryPage = () => {
   const navigate = useNavigate();
   const [decisions, setDecisions] = useState([]);
@@ -864,7 +1480,6 @@ const HistoryPage = () => {
   );
 };
 
-// Profil Sayfası - Basitleştirilmiş
 const ProfilePage = () => {
   const navigate = useNavigate();
   const { user, logout } = useAuth();
@@ -936,7 +1551,6 @@ const ProfilePage = () => {
   );
 };
 
-// Basit Mesajlar sayfası (placeholder)
 const MessagesPage = () => {
   const navigate = useNavigate();
 
@@ -963,7 +1577,6 @@ const MessagesPage = () => {
   );
 };
 
-// Alt Navigasyon Bileşeni
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
@@ -1007,6 +1620,8 @@ function App() {
             <Route path="/" element={<OnboardingPage />} />
             <Route path="/login" element={<LoginPage />} />
             <Route path="/register" element={<RegisterPage />} />
+            <Route path="/admin-login" element={<AdminLoginPage />} />
+            <Route path="/admin" element={<AdminRoute><AdminDashboard /></AdminRoute>} />
             <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
             <Route path="/dice" element={<ProtectedRoute><DicePage /></ProtectedRoute>} />
             <Route path="/result" element={<ProtectedRoute><ResultPage /></ProtectedRoute>} />

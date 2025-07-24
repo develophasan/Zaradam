@@ -20,6 +20,10 @@ JWT_SECRET = "zarver_secret_key_2024"
 JWT_ALGORITHM = "HS256"
 GEMINI_API_KEY = "AIzaSyC6dkkM1DEyTMzYuBCkm9kSK-zlx1Pp1eU"
 
+# Admin credentials
+ADMIN_USERNAME = "admin"
+ADMIN_PASSWORD = "Hasan-1288"
+
 # MongoDB setup
 client = MongoClient(MONGO_URL)
 db = client.zarver_db
@@ -30,6 +34,7 @@ decisions_collection = db.decisions
 messages_collection = db.messages
 follows_collection = db.follows
 notifications_collection = db.notifications
+admin_logs_collection = db.admin_logs
 
 # Security
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
@@ -52,9 +57,14 @@ class UserRegister(BaseModel):
     email: str
     password: str
     name: str
+    privacy_agreement: bool
 
 class UserLogin(BaseModel):
     email: str
+    password: str
+
+class AdminLogin(BaseModel):
+    username: str
     password: str
 
 class DecisionCreate(BaseModel):
@@ -67,6 +77,11 @@ class MessageCreate(BaseModel):
 
 class FollowAction(BaseModel):
     user_id: str
+
+class UserSuspension(BaseModel):
+    user_id: str
+    reason: str
+    duration_days: int
 
 # WebSocket Manager
 class ConnectionManager:
@@ -121,8 +136,35 @@ async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(s
     except JWTError:
         raise HTTPException(status_code=401, detail="Invalid token")
 
+async def get_admin_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
+    try:
+        token = credentials.credentials
+        payload = jwt.decode(token, JWT_SECRET, algorithms=[JWT_ALGORITHM])
+        user_id: str = payload.get("sub")
+        is_admin: bool = payload.get("is_admin", False)
+        
+        if not is_admin:
+            raise HTTPException(status_code=403, detail="Admin access required")
+        
+        return {"user_id": user_id, "is_admin": True}
+    except JWTError:
+        raise HTTPException(status_code=401, detail="Invalid token")
+
+def log_admin_action(admin_id: str, action: str, target_user_id: str = None, details: Dict = None):
+    """Admin aksiyonlarını logla"""
+    log_entry = {
+        "_id": str(uuid.uuid4()),
+        "admin_id": admin_id,
+        "action": action,
+        "target_user_id": target_user_id,
+        "details": details or {},
+        "timestamp": datetime.now(),
+        "ip_address": "127.0.0.1"  # Production'da gerçek IP alınır
+    }
+    admin_logs_collection.insert_one(log_entry)
+
 async def generate_decision_alternatives(decision_text: str) -> List[str]:
-    """Gemini ile karar alternatiflerı üret"""
+    """Gemini ile karar alternatifleri üret"""
     try:
         session_id = f"decision_{uuid.uuid4()}"
         
@@ -187,6 +229,10 @@ async def root():
 
 @app.post("/api/auth/register")
 async def register(user_data: UserRegister):
+    # Privacy agreement kontrolü
+    if not user_data.privacy_agreement:
+        raise HTTPException(status_code=400, detail="Kişisel verilerin işlenmesi sözleşmesi kabul edilmelidir")
+    
     # Check if user exists
     if users_collection.find_one({"email": user_data.email}):
         raise HTTPException(status_code=400, detail="Email already registered")
@@ -206,6 +252,11 @@ async def register(user_data: UserRegister):
         "password": hashed_password,
         "avatar": f"https://images.unsplash.com/photo-{random.randint(1500000000000, 1600000000000)}?w=150&h=150&fit=crop&crop=face",
         "created_at": datetime.now(),
+        "is_suspended": False,
+        "suspension_reason": None,
+        "suspension_until": None,
+        "privacy_agreement_accepted": True,
+        "privacy_agreement_date": datetime.now(),
         "stats": {
             "total_decisions": 0,
             "implemented_decisions": 0,
@@ -239,6 +290,17 @@ async def login(user_data: UserLogin):
     if not user or not verify_password(user_data.password, user["password"]):
         raise HTTPException(status_code=401, detail="Invalid credentials")
     
+    # Askıya alınmış kullanıcı kontrolü
+    if user.get("is_suspended", False):
+        suspension_until = user.get("suspension_until")
+        if suspension_until and suspension_until > datetime.now():
+            raise HTTPException(
+                status_code=403, 
+                detail=f"Hesabınız askıya alınmıştır. Süre: {suspension_until.strftime('%Y-%m-%d %H:%M')}"
+            )
+        elif not suspension_until:
+            raise HTTPException(status_code=403, detail="Hesabınız kalıcı olarak askıya alınmıştır")
+    
     access_token = create_access_token(data={"sub": user["_id"]})
     
     return {
@@ -254,6 +316,29 @@ async def login(user_data: UserLogin):
         }
     }
 
+@app.post("/api/auth/admin/login")
+async def admin_login(admin_data: AdminLogin):
+    # Admin credentials kontrolü
+    if admin_data.username != ADMIN_USERNAME or admin_data.password != ADMIN_PASSWORD:
+        raise HTTPException(status_code=401, detail="Invalid admin credentials")
+    
+    # Admin token oluştur
+    access_token = create_access_token(data={"sub": "admin", "is_admin": True})
+    
+    # Admin giriş logla
+    log_admin_action("admin", "admin_login", details={"login_time": datetime.now().isoformat()})
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": {
+            "id": "admin",
+            "username": "admin",
+            "name": "Admin",
+            "is_admin": True
+        }
+    }
+
 @app.get("/api/auth/me")
 async def get_me(current_user: dict = Depends(get_current_user)):
     return {
@@ -265,6 +350,217 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "stats": current_user.get("stats", {})
     }
 
+# ADMIN ENDPOINTS
+
+@app.get("/api/admin/dashboard")
+async def get_admin_dashboard(admin: dict = Depends(get_admin_user)):
+    # Dashboard istatistikleri
+    total_users = users_collection.count_documents({})
+    active_users = users_collection.count_documents({"is_suspended": {"$ne": True}})
+    suspended_users = users_collection.count_documents({"is_suspended": True})
+    total_decisions = decisions_collection.count_documents({})
+    
+    # Son 30 gün kayıt olan kullanıcılar
+    thirty_days_ago = datetime.now() - timedelta(days=30)
+    new_users_last_30_days = users_collection.count_documents({
+        "created_at": {"$gte": thirty_days_ago}
+    })
+    
+    # Son aktif kullanıcılar
+    recent_users = list(users_collection.find(
+        {},
+        {"name": 1, "username": 1, "email": 1, "created_at": 1, "is_suspended": 1}
+    ).sort("created_at", -1).limit(10))
+    
+    for user in recent_users:
+        user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
+    
+    return {
+        "stats": {
+            "total_users": total_users,
+            "active_users": active_users,
+            "suspended_users": suspended_users,
+            "total_decisions": total_decisions,
+            "new_users_last_30_days": new_users_last_30_days
+        },
+        "recent_users": recent_users
+    }
+
+@app.get("/api/admin/users")
+async def get_all_users(
+    admin: dict = Depends(get_admin_user),
+    skip: int = 0,
+    limit: int = 50,
+    search: str = None
+):
+    # Kullanıcı arama
+    query = {}
+    if search:
+        query = {
+            "$or": [
+                {"name": {"$regex": search, "$options": "i"}},
+                {"username": {"$regex": search, "$options": "i"}},
+                {"email": {"$regex": search, "$options": "i"}}
+            ]
+        }
+    
+    users = list(users_collection.find(
+        query,
+        {"password": 0}
+    ).sort("created_at", -1).skip(skip).limit(limit))
+    
+    # Format dates
+    for user in users:
+        user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
+        if user.get("suspension_until"):
+            user["suspension_until"] = user["suspension_until"].strftime("%Y-%m-%d %H:%M")
+    
+    # Log admin action
+    log_admin_action("admin", "view_users", details={"search": search, "count": len(users)})
+    
+    return users
+
+@app.get("/api/admin/users/{user_id}")
+async def get_user_details(user_id: str, admin: dict = Depends(get_admin_user)):
+    user = users_collection.find_one({"_id": user_id}, {"password": 0})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Kullanıcının kararlarını getir
+    decisions = list(decisions_collection.find({"user_id": user_id}).sort("created_at", -1).limit(10))
+    for decision in decisions:
+        decision["created_at"] = decision["created_at"].strftime("%Y-%m-%d %H:%M")
+    
+    # Format dates
+    user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
+    if user.get("suspension_until"):
+        user["suspension_until"] = user["suspension_until"].strftime("%Y-%m-%d %H:%M")
+    
+    # Log admin action
+    log_admin_action("admin", "view_user_details", target_user_id=user_id)
+    
+    return {
+        "user": user,
+        "recent_decisions": decisions
+    }
+
+@app.post("/api/admin/users/{user_id}/suspend")
+async def suspend_user(
+    user_id: str,
+    suspension_data: UserSuspension,
+    admin: dict = Depends(get_admin_user)
+):
+    user = users_collection.find_one({"_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Askıya alma süresi hesapla
+    suspension_until = None
+    if suspension_data.duration_days > 0:
+        suspension_until = datetime.now() + timedelta(days=suspension_data.duration_days)
+    
+    # Kullanıcıyı askıya al
+    users_collection.update_one(
+        {"_id": user_id},
+        {
+            "$set": {
+                "is_suspended": True,
+                "suspension_reason": suspension_data.reason,
+                "suspension_until": suspension_until,
+                "suspended_at": datetime.now()
+            }
+        }
+    )
+    
+    # Admin action logla
+    log_admin_action(
+        "admin", 
+        "suspend_user", 
+        target_user_id=user_id,
+        details={
+            "reason": suspension_data.reason,
+            "duration_days": suspension_data.duration_days,
+            "until": suspension_until.isoformat() if suspension_until else "permanent"
+        }
+    )
+    
+    return {"success": True, "message": "User suspended successfully"}
+
+@app.post("/api/admin/users/{user_id}/unsuspend")
+async def unsuspend_user(user_id: str, admin: dict = Depends(get_admin_user)):
+    user = users_collection.find_one({"_id": user_id})
+    if not user:
+        raise HTTPException(status_code=404, detail="User not found")
+    
+    # Askıyı kaldır
+    users_collection.update_one(
+        {"_id": user_id},
+        {
+            "$set": {
+                "is_suspended": False,
+                "suspension_reason": None,
+                "suspension_until": None
+            }
+        }
+    )
+    
+    # Admin action logla
+    log_admin_action("admin", "unsuspend_user", target_user_id=user_id)
+    
+    return {"success": True, "message": "User suspension removed"}
+
+@app.get("/api/admin/logs")
+async def get_admin_logs(
+    admin: dict = Depends(get_admin_user),
+    skip: int = 0,
+    limit: int = 100
+):
+    logs = list(admin_logs_collection.find({}).sort("timestamp", -1).skip(skip).limit(limit))
+    
+    # Format timestamps
+    for log in logs:
+        log["timestamp"] = log["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+    
+    return logs
+
+@app.get("/api/admin/export/users")
+async def export_user_data(admin: dict = Depends(get_admin_user)):
+    """Devlet talep ettiğinde kullanıcı verilerini export et"""
+    users = list(users_collection.find({}, {"password": 0}))
+    decisions = list(decisions_collection.find({}))
+    
+    # Format dates for export
+    for user in users:
+        user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+        if user.get("suspension_until"):
+            user["suspension_until"] = user["suspension_until"].strftime("%Y-%m-%d %H:%M:%S")
+    
+    for decision in decisions:
+        decision["created_at"] = decision["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+    
+    export_data = {
+        "export_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+        "total_users": len(users),
+        "total_decisions": len(decisions),
+        "users": users,
+        "decisions": decisions
+    }
+    
+    # Log critical export action
+    log_admin_action(
+        "admin", 
+        "export_user_data", 
+        details={
+            "export_type": "full_user_data",
+            "user_count": len(users),
+            "decision_count": len(decisions),
+            "export_timestamp": datetime.now().isoformat()
+        }
+    )
+    
+    return export_data
+
+# Normal User Endpoints (existing ones)
 @app.post("/api/decisions/create")
 async def create_decision(decision_data: DecisionCreate, current_user: dict = Depends(get_current_user)):
     # Generate alternatives using Gemini
@@ -373,225 +669,6 @@ async def get_decision_history(current_user: dict = Depends(get_current_user)):
             decision["rolled_at"] = decision["rolled_at"].strftime("%Y-%m-%d %H:%M")
     
     return decisions
-
-@app.get("/api/decisions/public")
-async def get_public_decisions(skip: int = 0, limit: int = 20):
-    decisions = list(decisions_collection.find(
-        {"is_public": True, "dice_result": {"$ne": None}},
-        {"user_id": 1, "text": 1, "selected_option": 1, "implemented": 1, "created_at": 1}
-    ).sort("created_at", -1).skip(skip).limit(limit))
-    
-    # Get user info for each decision
-    for decision in decisions:
-        user = users_collection.find_one({"_id": decision["user_id"]}, {"name": 1, "username": 1, "avatar": 1})
-        decision["user"] = user
-        decision["created_at"] = decision["created_at"].strftime("%Y-%m-%d")
-    
-    return decisions
-
-@app.post("/api/messages/send")
-async def send_message(message_data: MessageCreate, current_user: dict = Depends(get_current_user)):
-    message_id = str(uuid.uuid4())
-    message_doc = {
-        "_id": message_id,
-        "sender_id": current_user["_id"],
-        "recipient_id": message_data.recipient_id,
-        "content": message_data.content,
-        "created_at": datetime.now(),
-        "read": False
-    }
-    
-    messages_collection.insert_one(message_doc)
-    
-    # Send real-time notification
-    await manager.send_personal_message(
-        json.dumps({
-            "type": "new_message",
-            "from": current_user["name"],
-            "content": message_data.content
-        }),
-        message_data.recipient_id
-    )
-    
-    return {"success": True, "message_id": message_id}
-
-@app.get("/api/messages/conversations")
-async def get_conversations(current_user: dict = Depends(get_current_user)):
-    # Get all conversations for current user
-    pipeline = [
-        {
-            "$match": {
-                "$or": [
-                    {"sender_id": current_user["_id"]},
-                    {"recipient_id": current_user["_id"]}
-                ]
-            }
-        },
-        {
-            "$sort": {"created_at": -1}
-        },
-        {
-            "$group": {
-                "_id": {
-                    "$cond": [
-                        {"$eq": ["$sender_id", current_user["_id"]]},
-                        "$recipient_id",
-                        "$sender_id"
-                    ]
-                },
-                "last_message": {"$first": "$$ROOT"}
-            }
-        }
-    ]
-    
-    conversations = list(messages_collection.aggregate(pipeline))
-    
-    # Get user details for each conversation
-    result = []
-    for conv in conversations:
-        other_user_id = conv["_id"]
-        other_user = users_collection.find_one({"_id": other_user_id}, {"name": 1, "username": 1, "avatar": 1})
-        
-        if other_user:
-            unread_count = messages_collection.count_documents({
-                "sender_id": other_user_id,
-                "recipient_id": current_user["_id"],
-                "read": False
-            })
-            
-            result.append({
-                "user": other_user,
-                "last_message": conv["last_message"]["content"],
-                "time": conv["last_message"]["created_at"].strftime("%H:%M"),
-                "unread": unread_count
-            })
-    
-    return result
-
-@app.get("/api/messages/chat/{user_id}")
-async def get_chat_messages(user_id: str, current_user: dict = Depends(get_current_user)):
-    messages = list(messages_collection.find({
-        "$or": [
-            {"sender_id": current_user["_id"], "recipient_id": user_id},
-            {"sender_id": user_id, "recipient_id": current_user["_id"]}
-        ]
-    }).sort("created_at", 1))
-    
-    # Mark messages as read
-    messages_collection.update_many(
-        {"sender_id": user_id, "recipient_id": current_user["_id"]},
-        {"$set": {"read": True}}
-    )
-    
-    # Format messages
-    for message in messages:
-        message["sender"] = "me" if message["sender_id"] == current_user["_id"] else "other"
-        message["time"] = message["created_at"].strftime("%H:%M")
-    
-    return messages
-
-@app.get("/api/users/search")
-async def search_users(q: str, current_user: dict = Depends(get_current_user)):
-    users = list(users_collection.find(
-        {
-            "$and": [
-                {"_id": {"$ne": current_user["_id"]}},
-                {
-                    "$or": [
-                        {"name": {"$regex": q, "$options": "i"}},
-                        {"username": {"$regex": q, "$options": "i"}}
-                    ]
-                }
-            ]
-        },
-        {"name": 1, "username": 1, "avatar": 1}
-    ).limit(20))
-    
-    return users
-
-@app.post("/api/users/follow")
-async def follow_user(follow_data: FollowAction, current_user: dict = Depends(get_current_user)):
-    if follow_data.user_id == current_user["_id"]:
-        raise HTTPException(status_code=400, detail="Cannot follow yourself")
-    
-    # Check if already following
-    existing_follow = follows_collection.find_one({
-        "follower_id": current_user["_id"],
-        "following_id": follow_data.user_id
-    })
-    
-    if existing_follow:
-        raise HTTPException(status_code=400, detail="Already following this user")
-    
-    # Create follow relationship
-    follow_doc = {
-        "_id": str(uuid.uuid4()),
-        "follower_id": current_user["_id"],
-        "following_id": follow_data.user_id,
-        "created_at": datetime.now()
-    }
-    
-    follows_collection.insert_one(follow_doc)
-    
-    # Update stats
-    users_collection.update_one(
-        {"_id": current_user["_id"]},
-        {"$inc": {"stats.following": 1}}
-    )
-    
-    users_collection.update_one(
-        {"_id": follow_data.user_id},
-        {"$inc": {"stats.followers": 1}}
-    )
-    
-    return {"success": True}
-
-@app.delete("/api/users/unfollow/{user_id}")
-async def unfollow_user(user_id: str, current_user: dict = Depends(get_current_user)):
-    result = follows_collection.delete_one({
-        "follower_id": current_user["_id"],
-        "following_id": user_id
-    })
-    
-    if result.deleted_count == 0:
-        raise HTTPException(status_code=400, detail="Not following this user")
-    
-    # Update stats
-    users_collection.update_one(
-        {"_id": current_user["_id"]},
-        {"$inc": {"stats.following": -1}}
-    )
-    
-    users_collection.update_one(
-        {"_id": user_id},
-        {"$inc": {"stats.followers": -1}}
-    )
-    
-    return {"success": True}
-
-@app.get("/api/users/{user_id}/followers")
-async def get_followers(user_id: str):
-    followers = list(follows_collection.find({"following_id": user_id}))
-    
-    result = []
-    for follow in followers:
-        user = users_collection.find_one({"_id": follow["follower_id"]}, {"name": 1, "username": 1, "avatar": 1})
-        if user:
-            result.append(user)
-    
-    return result
-
-@app.get("/api/users/{user_id}/following")
-async def get_following(user_id: str):
-    following = list(follows_collection.find({"follower_id": user_id}))
-    
-    result = []
-    for follow in following:
-        user = users_collection.find_one({"_id": follow["following_id"]}, {"name": 1, "username": 1, "avatar": 1})
-        if user:
-            result.append(user)
-    
-    return result
 
 # WebSocket endpoint
 @app.websocket("/ws/{user_id}")
