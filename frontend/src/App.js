@@ -1069,7 +1069,7 @@ const HomePage = () => {
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
           <div className="flex items-center space-x-3">
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-lg dice-shadow">
-              ⚫
+              🎲
             </div>
             <h1 className="text-2xl font-bold text-white">ZARADAM</h1>
           </div>
