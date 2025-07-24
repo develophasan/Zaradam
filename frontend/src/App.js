@@ -1052,7 +1052,7 @@ const HomePage = () => {
             <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-lg dice-shadow">
               ⚫
             </div>
-            <h1 className="text-2xl font-bold text-white">ZARVER</h1>
+            <h1 className="text-2xl font-bold text-white">ZARADAM</h1>
           </div>
           <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-xl overflow-hidden border-2 border-zinc-700">
             <img src={user?.avatar} alt="Profile" className="w-full h-full object-cover" />
