@@ -26,7 +26,7 @@ ADMIN_PASSWORD = "Hasan-1288"
 
 # MongoDB setup
 client = MongoClient(MONGO_URL)
-db = client.zarver_db
+db = client.zaradam_db
 
 # Collections
 users_collection = db.users
