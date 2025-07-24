@@ -2811,15 +2811,24 @@ const UserProfilePage = () => {
 
   const fetchUserProfile = async () => {
     try {
-      // Get user info from search to check follow status
-      const searchResults = await apiCall(`${API}/users/search?q=${userId}`);
+      // Get all users and find by ID (since search API searches by name/username)
+      const searchResults = await apiCall(`${API}/users/search?q=`);
       const foundUser = searchResults.find(u => u._id === userId);
       
-      if (foundUser) {
+      if (!foundUser) {
+        // Try alternative: search by partial match to get more results
+        const allUsers = await apiCall(`${API}/users/search?q=a`); // Get many results
+        const targetUser = allUsers.find(u => u._id === userId);
+        
+        if (targetUser) {
+          setUser(targetUser);
+          setIsFollowing(targetUser.is_following);
+        } else {
+          throw new Error('Kullanıcı bulunamadı');
+        }
+      } else {
         setUser(foundUser);
         setIsFollowing(foundUser.is_following);
-      } else {
-        throw new Error('Kullanıcı bulunamadı');
       }
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
