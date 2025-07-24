@@ -30,6 +30,9 @@ IYZICO_CONFIG = {
     'base_url': 'https://sandbox-api.iyzipay.com'
 }
 
+# Test mode - İyzico'yu geçici olarak devre dışı bırak
+TEST_MODE = os.environ.get('TEST_MODE', 'true').lower() == 'true'
+
 # Admin credentials
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Hasan-1288"
