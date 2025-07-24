@@ -225,7 +225,7 @@ KURALLARIN:
 
 @app.get("/api/")
 async def root():
-    return {"message": "Zarver API is running!"}
+    return {"message": "Zaradam API is running!"}
 
 @app.post("/api/auth/register")
 async def register(user_data: UserRegister):
