@@ -1733,7 +1733,7 @@ const ProfilePage = () => {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto p-4">
+      <div className="max-w-lg mx-auto p-4 pb-24">
         <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 mb-6">
           <div className="text-center mb-6">
             <div className="relative w-24 h-24 mx-auto mb-4">
