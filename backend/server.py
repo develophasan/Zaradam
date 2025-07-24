@@ -84,6 +84,13 @@ class UserSuspension(BaseModel):
     reason: str
     duration_days: int
 
+class ProfilePhotoUpload(BaseModel):
+    photo_data: str  # base64 encoded image
+
+class UserProfileUpdate(BaseModel):
+    name: Optional[str] = None
+    avatar: Optional[str] = None
+
 # WebSocket Manager
 class ConnectionManager:
     def __init__(self):
