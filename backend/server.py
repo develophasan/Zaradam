@@ -43,14 +43,14 @@ security = HTTPBearer()
 
 app = FastAPI(title="Zaradam API")
 
-# CORS - Temporarily disabled to test
-# app.add_middleware(
-#     CORSMiddleware,
-#     allow_origins=["*"],
-#     allow_credentials=True,
-#     allow_methods=["*"],
-#     allow_headers=["*"]
-# )
+# CORS
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 # Pydantic Models
 class UserRegister(BaseModel):
