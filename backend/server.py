@@ -40,7 +40,7 @@ admin_logs_collection = db.admin_logs
 pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
 security = HTTPBearer()
 
-app = FastAPI(title="Zarver API")
+app = FastAPI(title="Zaradam API")
 
 # CORS
 app.add_middleware(
