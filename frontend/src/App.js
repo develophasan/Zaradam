@@ -227,7 +227,7 @@ const OnboardingPage = () => {
           <div className="w-20 h-20 bg-white rounded-2xl mx-auto mb-6 flex items-center justify-center text-4xl dice-shadow">
             ⚫
           </div>
-          <h1 className="text-4xl font-bold text-white mb-3">ZARVER</h1>
+          <h1 className="text-4xl font-bold text-white mb-3">ZARADAM</h1>
           <p className="text-zinc-400 text-lg">Kararsızlıklarını zar ile çöz</p>
         </div>
         
