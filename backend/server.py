@@ -757,6 +757,38 @@ async def search_users(q: str, current_user: dict = Depends(get_current_user), l
     
     return users
 
+@app.get("/api/users/profile/{user_id}")
+async def get_user_profile(user_id: str, current_user: dict = Depends(get_current_user)):
+    """Get specific user profile by ID with follow status"""
+    try:
+        # Get user info
+        user = users_collection.find_one({"_id": user_id}, {"password": 0})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        # Check if current user follows this user
+        follow_status = follows_collection.find_one({
+            "follower_id": current_user["_id"],
+            "following_id": user_id
+        })
+        user["is_following"] = bool(follow_status)
+        
+        # Check if this user follows current user back (mutual follow)
+        mutual_follow = follows_collection.find_one({
+            "follower_id": user_id,
+            "following_id": current_user["_id"]
+        })
+        user["follows_back"] = bool(mutual_follow)
+        user["can_message"] = bool(follow_status and mutual_follow)
+        
+        # Format date
+        user["created_at"] = user["created_at"].strftime("%Y-%m-%d")
+        
+        return user
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # NOTIFICATIONS ENDPOINTS
 
 @app.get("/api/notifications")
