@@ -2169,6 +2169,7 @@ const ProfilePage = () => {
 
 const MessagesPage = () => {
   const navigate = useNavigate();
+  const location = useLocation();
   const { user } = useAuth();
   const [conversations, setConversations] = useState([]);
   const [selectedConversation, setSelectedConversation] = useState(null);
@@ -2181,7 +2182,16 @@ const MessagesPage = () => {
 
   useEffect(() => {
     fetchConversations();
-  }, []);
+    
+    // Check if we should start a conversation (from user profile)
+    if (location.state?.startConversation) {
+      const { partner } = location.state.startConversation;
+      setSelectedConversation({ partner });
+      fetchConversationMessages(partner.id);
+      // Clear the state to prevent reopening on refresh
+      window.history.replaceState({}, document.title);
+    }
+  }, [location.state]);
 
   const fetchConversations = async () => {
     try {
