@@ -1217,13 +1217,55 @@ const HomePage = () => {
             </div>
             <h1 className="text-2xl font-bold text-white">ZARADAM</h1>
           </div>
-          <div className="flex items-center space-x-4">
+          <div className="flex items-center space-x-3">
+            {/* Query Counter */}
+            {subscriptionStatus && !subscriptionStatus.is_premium && (
+              <div className="bg-zinc-800 px-3 py-1 rounded-lg border border-zinc-700">
+                <span className="text-xs text-zinc-400">Kalan sorgu:</span>
+                <span className="text-white font-bold ml-1">
+                  {subscriptionStatus.queries_remaining}
+                </span>
+              </div>
+            )}
+            
+            {/* Premium Badge or Upgrade Button */}
+            {subscriptionStatus?.is_premium ? (
+              <div className="bg-green-900 px-3 py-1 rounded-lg border border-green-700">
+                <span className="text-green-300 text-xs font-bold">✨ Premium</span>
+              </div>
+            ) : (
+              <button
+                onClick={() => navigate('/subscription')}
+                className="bg-yellow-600 hover:bg-yellow-500 px-3 py-1 rounded-lg text-xs font-bold text-black transition-colors"
+              >
+                Upgrade
+              </button>
+            )}
+            
             <NotificationBell />
             <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-xl overflow-hidden border-2 border-zinc-700">
               <img src={user?.avatar} alt="Profile" className="w-full h-full object-cover" />
             </button>
           </div>
         </div>
+        
+        {/* Query Limit Warning */}
+        {subscriptionStatus && !subscriptionStatus.is_premium && subscriptionStatus.queries_remaining === 0 && (
+          <div className="bg-red-900 border-t border-red-700 px-4 py-3">
+            <div className="max-w-lg mx-auto flex items-center justify-between">
+              <div>
+                <p className="text-red-300 text-sm font-medium">Günlük sorgu limitiniz doldu!</p>
+                <p className="text-red-400 text-xs">Premium üyelikle sınırsız sorgu hakkı kazanın</p>
+              </div>
+              <button
+                onClick={() => navigate('/subscription')}
+                className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-white text-sm font-bold transition-colors"
+              >
+                Premium Al
+              </button>
+            </div>
+          </div>
+        )}
       </header>
 
       <div className="max-w-lg mx-auto p-4 space-y-6 pb-24">
