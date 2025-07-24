@@ -862,6 +862,23 @@ const AdminDashboard = () => {
     }
   };
 
+  const toggleUserPremium = async (userId) => {
+    try {
+      const response = await apiCall(`${API}/admin/user/${userId}/toggle-premium`, {
+        method: 'POST'
+      });
+      
+      if (response.success) {
+        alert(response.message);
+        // Refresh data
+        await fetchDashboardData();
+      }
+    } catch (error) {
+      console.error('Failed to toggle premium:', error);
+      alert('Premium durum değiştirme başarısız: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
   const filteredUsers = users.filter(user => 
     user.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     user.username.toLowerCase().includes(searchTerm.toLowerCase()) ||
