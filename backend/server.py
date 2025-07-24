@@ -358,6 +358,61 @@ async def get_me(current_user: dict = Depends(get_current_user)):
         "stats": current_user.get("stats", {})
     }
 
+@app.post("/api/auth/upload-profile-photo")
+async def upload_profile_photo(photo_data: ProfilePhotoUpload, current_user: dict = Depends(get_current_user)):
+    """Upload profile photo as base64 encoded image"""
+    try:
+        # Update user's avatar with base64 data
+        users_collection.update_one(
+            {"_id": current_user["_id"]},
+            {"$set": {"avatar": photo_data.photo_data}}
+        )
+        
+        # Return updated user info
+        updated_user = users_collection.find_one({"_id": current_user["_id"]})
+        
+        return {
+            "success": True,
+            "message": "Profil fotoğrafı başarıyla güncellendi",
+            "avatar": updated_user["avatar"]
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Fotoğraf yükleme başarısız: {str(e)}")
+
+@app.put("/api/auth/update-profile")
+async def update_profile(profile_data: UserProfileUpdate, current_user: dict = Depends(get_current_user)):
+    """Update user profile information"""
+    try:
+        update_data = {}
+        if profile_data.name is not None:
+            update_data["name"] = profile_data.name
+        if profile_data.avatar is not None:
+            update_data["avatar"] = profile_data.avatar
+            
+        if update_data:
+            users_collection.update_one(
+                {"_id": current_user["_id"]},
+                {"$set": update_data}
+            )
+        
+        # Return updated user info
+        updated_user = users_collection.find_one({"_id": current_user["_id"]})
+        
+        return {
+            "success": True,
+            "message": "Profil başarıyla güncellendi",
+            "user": {
+                "id": updated_user["_id"],
+                "username": updated_user["username"],
+                "name": updated_user["name"],
+                "email": updated_user["email"],
+                "avatar": updated_user["avatar"],
+                "stats": updated_user.get("stats", {})
+            }
+        }
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Profil güncelleme başarısız: {str(e)}")
+
 # ADMIN ENDPOINTS
 
 @app.get("/api/admin/dashboard")
