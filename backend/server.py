@@ -797,6 +797,157 @@ async def get_unread_notifications_count(current_user: dict = Depends(get_curren
     
     return {"count": count}
 
+# SUBSCRIPTION ENDPOINTS
+
+@app.post("/api/subscription/create-payment")
+async def create_subscription_payment(payment_data: PaymentRequest, current_user: dict = Depends(get_current_user)):
+    """Create İyzico payment for monthly subscription"""
+    try:
+        # Create payment request
+        request = {
+            "locale": iyzipay.Locale.TR.value,
+            "conversationId": f"sub_{current_user['_id']}_{int(datetime.now().timestamp())}",
+            "price": "29.99",
+            "paidPrice": "29.99",
+            "currency": iyzipay.Currency.TRY.value,
+            "installment": 1,
+            "basketId": f"basket_{current_user['_id']}",
+            "paymentChannel": iyzipay.PaymentChannel.WEB.value,
+            "paymentGroup": iyzipay.PaymentGroup.SUBSCRIPTION.value,
+            "paymentCard": {
+                "cardHolderName": payment_data.card_holder_name,
+                "cardNumber": payment_data.card_number,
+                "expireMonth": payment_data.expire_month,
+                "expireYear": payment_data.expire_year,
+                "cvc": payment_data.cvc,
+                "registerCard": 0
+            },
+            "buyer": {
+                "id": current_user["_id"],
+                "name": current_user["name"].split()[0] if current_user["name"] else "Ad",
+                "surname": current_user["name"].split()[-1] if len(current_user["name"].split()) > 1 else "Soyad",
+                "gsmNumber": "+905350000000",
+                "email": current_user["email"],
+                "identityNumber": "74300864791",
+                "lastLoginDate": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                "registrationDate": current_user["created_at"].strftime("%Y-%m-%d %H:%M:%S"),
+                "registrationAddress": "Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1",
+                "ip": "85.34.78.112",
+                "city": "Istanbul",
+                "country": "Turkey",
+                "zipCode": "34732"
+            },
+            "shippingAddress": {
+                "contactName": current_user["name"],
+                "city": "Istanbul",
+                "country": "Turkey",
+                "address": "Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1",
+                "zipCode": "34732"
+            },
+            "billingAddress": {
+                "contactName": current_user["name"],
+                "city": "Istanbul", 
+                "country": "Turkey",
+                "address": "Nidakule Göztepe, Merdivenköy Mah. Bora Sok. No:1",
+                "zipCode": "34732"
+            },
+            "basketItems": [
+                {
+                    "id": "premium_subscription",
+                    "name": "Zaradam Premium Aylık Abonelik",
+                    "category1": "Subscription",
+                    "category2": "Premium",
+                    "itemType": iyzipay.BasketItemType.VIRTUAL.value,
+                    "price": "29.99"
+                }
+            ]
+        }
+        
+        # Make payment
+        payment = iyzipay.Payment()
+        payment_result = payment.create(request, IYZICO_CONFIG)
+        
+        if payment_result.status == "success":
+            # Update user subscription
+            next_payment_date = datetime.now() + timedelta(days=30)
+            users_collection.update_one(
+                {"_id": current_user["_id"]},
+                {"$set": {
+                    "subscription.is_premium": True,
+                    "subscription.subscription_id": payment_result.payment_id,
+                    "subscription.subscription_status": "active",
+                    "subscription.next_payment_date": next_payment_date,
+                    "subscription.queries_used_today": 0  # Reset query usage
+                }}
+            )
+            
+            return {
+                "success": True,
+                "payment_id": payment_result.payment_id,
+                "message": "Premium aboneliğiniz başarıyla aktifleştirildi! Artık sınırsız sorgu hakkınız var."
+            }
+        else:
+            raise HTTPException(
+                status_code=400, 
+                detail=f"Ödeme başarısız: {payment_result.error_message}"
+            )
+            
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=f"Ödeme işlemi başarısız: {str(e)}")
+
+@app.get("/api/subscription/status")
+async def get_subscription_status(current_user: dict = Depends(get_current_user)):
+    """Get user's subscription status and query limits"""
+    subscription = current_user.get("subscription", {})
+    
+    # Reset daily counter if it's a new day
+    today = datetime.now().strftime("%Y-%m-%d")
+    if subscription.get("last_query_date", "") != today:
+        subscription["queries_used_today"] = 0
+        subscription["last_query_date"] = today
+        
+        users_collection.update_one(
+            {"_id": current_user["_id"]},
+            {"$set": {
+                "subscription.queries_used_today": 0,
+                "subscription.last_query_date": today
+            }}
+        )
+    
+    return {
+        "is_premium": subscription.get("is_premium", False),
+        "subscription_status": subscription.get("subscription_status", "inactive"),
+        "daily_queries": subscription.get("daily_queries", 3),
+        "queries_used_today": subscription.get("queries_used_today", 0),
+        "queries_remaining": max(0, subscription.get("daily_queries", 3) - subscription.get("queries_used_today", 0)),
+        "next_payment_date": subscription.get("next_payment_date"),
+        "can_query": check_query_limit(current_user)
+    }
+
+@app.post("/api/subscription/cancel")
+async def cancel_subscription(current_user: dict = Depends(get_current_user)):
+    """Cancel user subscription"""
+    subscription = current_user.get("subscription", {})
+    
+    if not subscription.get("is_premium", False):
+        raise HTTPException(status_code=400, detail="Aktif aboneliğiniz bulunmuyor")
+    
+    # Update user subscription status
+    users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {"$set": {
+            "subscription.is_premium": False,
+            "subscription.subscription_status": "cancelled",
+            "subscription.subscription_id": None,
+            "subscription.next_payment_date": None
+        }}
+    )
+    
+    return {
+        "success": True,
+        "message": "Aboneliğiniz başarıyla iptal edildi. Günlük 3 ücretsiz sorgu hakkınız devam ediyor."
+    }
+
 # ADMIN ENDPOINTS
 
 @app.get("/api/admin/dashboard")
