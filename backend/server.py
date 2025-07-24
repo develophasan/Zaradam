@@ -23,6 +23,13 @@ JWT_SECRET = "zaradam_secret_key_2024"
 JWT_ALGORITHM = "HS256"
 GEMINI_API_KEY = "AIzaSyC6dkkM1DEyTMzYuBCkm9kSK-zlx1Pp1eU"
 
+# İyzico Configuration (Sandbox - Production için değiştirin)
+IYZICO_CONFIG = {
+    'api_key': os.environ.get('IYZICO_API_KEY', 'sandbox-CxGYgJqgCLWqKJqCKWIJ4P3RCPJJOw8Y'),
+    'secret_key': os.environ.get('IYZICO_SECRET_KEY', 'sandbox-1nL8KgLu1Lx7k8KlXgLpCg3yJg4X5c8a'),
+    'base_url': 'https://sandbox-api.iyzipay.com'
+}
+
 # Admin credentials
 ADMIN_USERNAME = "admin"
 ADMIN_PASSWORD = "Hasan-1288"
