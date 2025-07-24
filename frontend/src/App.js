@@ -1906,6 +1906,37 @@ const ProfilePage = () => {
             <span className="text-zinc-400">→</span>
           </button>
           
+          {/* Premium/Subscription Section */}
+          {user?.subscription?.is_premium ? (
+            <button 
+              onClick={() => navigate('/subscription')}
+              className="w-full p-4 text-left hover:bg-zinc-800 transition-colors flex items-center justify-between border-b border-zinc-800"
+            >
+              <div className="flex items-center space-x-3">
+                <span className="text-xl">✨</span>
+                <div>
+                  <span className="font-medium text-green-400">Premium Üyelik</span>
+                  <div className="text-xs text-green-500">Aktif</div>
+                </div>
+              </div>
+              <span className="text-zinc-400">→</span>
+            </button>
+          ) : (
+            <button 
+              onClick={() => navigate('/subscription')}
+              className="w-full p-4 text-left hover:bg-zinc-700 transition-colors flex items-center justify-between border-b border-zinc-800 bg-gradient-to-r from-yellow-900/20 to-orange-900/20 border-yellow-700/50"
+            >
+              <div className="flex items-center space-x-3">
+                <span className="text-xl">⭐</span>
+                <div>
+                  <span className="font-medium text-yellow-400">Premium'a Geç</span>
+                  <div className="text-xs text-yellow-500">Sınırsız sorgu - ₺29.99/ay</div>
+                </div>
+              </div>
+              <span className="text-yellow-400">→</span>
+            </button>
+          )}
+          
           <button 
             onClick={handleLogout}
             className="w-full p-4 text-left hover:bg-zinc-800 transition-colors flex items-center justify-between text-red-400"
