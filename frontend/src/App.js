@@ -2167,7 +2167,7 @@ const BottomNavigation = () => {
           <button
             key={item.path}
             onClick={() => navigate(item.path)}
-            className={`flex-1 py-3 px-2 text-center transition-colors relative ${
+            className={`flex-1 py-4 px-2 text-center transition-colors relative min-h-[60px] ${
               location.pathname === item.path
                 ? 'text-white bg-zinc-800'
                 : 'text-zinc-400 hover:text-white'
