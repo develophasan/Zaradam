@@ -2119,19 +2119,19 @@ const MessagesPage = () => {
 
             {/* Message Input */}
             <div className="p-4 border-t border-zinc-800 bg-zinc-900">
-              <div className="flex space-x-3">
+              <div className="flex space-x-3 items-end">
                 <input
                   type="text"
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
                   onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
                   placeholder="Mesajınızı yazın..."
-                  className="flex-1 p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+                  className="flex-1 p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none min-h-[44px]"
                 />
                 <button
                   onClick={handleSendMessage}
                   disabled={!newMessage.trim()}
-                  className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                  className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed min-h-[44px] flex items-center justify-center"
                 >
                   Gönder
                 </button>
