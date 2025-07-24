@@ -1557,12 +1557,62 @@ const ProfilePage = () => {
       <div className="max-w-lg mx-auto p-4">
         <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 mb-6">
           <div className="text-center mb-6">
-            <div className="w-24 h-24 mx-auto mb-4 rounded-xl overflow-hidden border-2 border-zinc-700">
-              <img src={user?.avatar} alt="Profile" className="w-full h-full object-cover" />
+            <div className="relative w-24 h-24 mx-auto mb-4">
+              <div className="w-24 h-24 rounded-xl overflow-hidden border-2 border-zinc-700">
+                <img 
+                  src={user?.avatar || "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face"} 
+                  alt="Profile" 
+                  className="w-full h-full object-cover" 
+                />
+              </div>
+              <button
+                onClick={() => setShowPhotoUpload(true)}
+                className="absolute -bottom-2 -right-2 w-8 h-8 bg-white text-black rounded-full flex items-center justify-center text-sm font-bold hover:bg-zinc-200 transition-colors border-2 border-zinc-900"
+              >
+                📷
+              </button>
             </div>
             <h2 className="text-xl font-bold text-white">{user?.name}</h2>
             <p className="text-zinc-400">@{user?.username}</p>
           </div>
+
+          {/* Photo Upload Modal */}
+          {showPhotoUpload && (
+            <div className="fixed inset-0 bg-black bg-opacity-75 flex items-center justify-center p-4 z-50">
+              <div className="bg-zinc-900 rounded-2xl max-w-sm w-full p-6 border border-zinc-800">
+                <div className="text-center mb-6">
+                  <h3 className="text-xl font-bold text-white mb-2">Profil Fotoğrafı Yükle</h3>
+                  <p className="text-zinc-400 text-sm">JPEG, PNG formatında, en fazla 2MB</p>
+                </div>
+                
+                <div className="space-y-4">
+                  <input
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    disabled={isUploadingPhoto}
+                    className="w-full p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none file:mr-4 file:py-2 file:px-4 file:rounded-xl file:border-0 file:text-sm file:font-semibold file:bg-white file:text-black hover:file:bg-zinc-200"
+                  />
+                  
+                  {isUploadingPhoto && (
+                    <div className="text-center text-zinc-400">
+                      Yükleniyor...
+                    </div>
+                  )}
+                  
+                  <div className="flex space-x-3">
+                    <button
+                      onClick={() => setShowPhotoUpload(false)}
+                      disabled={isUploadingPhoto}
+                      className="flex-1 bg-zinc-700 text-white py-3 rounded-xl font-bold hover:bg-zinc-600 transition-colors border border-zinc-600 disabled:opacity-50"
+                    >
+                      İptal
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
 
           <div className="grid grid-cols-2 gap-4 mb-6">
             <div className="text-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
