@@ -425,6 +425,248 @@ class ZaradamAPITester:
                 
         except Exception as e:
             self.log_test("Mark Notification Read", False, f"Request failed: {str(e)}")
+
+    def test_user_profile_api_basic(self):
+        """Test basic user profile API functionality"""
+        if not self.access_token_a or not self.user_id_b:
+            self.log_test("User Profile API Basic", False, "Skipped - missing authenticated users")
+            return
+            
+        try:
+            headers_a = {"Authorization": f"Bearer {self.access_token_a}"}
+            response = requests.get(f"{self.base_url}/users/profile/{self.user_id_b}", headers=headers_a)
+            
+            if response.status_code == 200:
+                profile = response.json()
+                
+                # Check required fields
+                required_fields = ["_id", "username", "name", "email", "avatar", "stats", "created_at"]
+                missing_fields = [field for field in required_fields if field not in profile]
+                
+                if not missing_fields:
+                    self.log_test("User Profile API Basic", True, "Profile API returns all required fields", 
+                                {"profile_id": profile.get("_id"), "username": profile.get("username")})
+                else:
+                    self.log_test("User Profile API Basic", False, f"Missing required fields: {missing_fields}", 
+                                {"profile": profile})
+            else:
+                self.log_test("User Profile API Basic", False, f"HTTP {response.status_code}", 
+                            {"response": response.text})
+                
+        except Exception as e:
+            self.log_test("User Profile API Basic", False, f"Request failed: {str(e)}")
+
+    def test_user_profile_follow_status(self):
+        """Test user profile API follow status fields"""
+        if not self.access_token_a or not self.user_id_b:
+            self.log_test("User Profile Follow Status", False, "Skipped - missing authenticated users")
+            return
+            
+        try:
+            headers_a = {"Authorization": f"Bearer {self.access_token_a}"}
+            response = requests.get(f"{self.base_url}/users/profile/{self.user_id_b}", headers=headers_a)
+            
+            if response.status_code == 200:
+                profile = response.json()
+                
+                # Check follow status fields
+                follow_fields = ["is_following", "follows_back", "can_message"]
+                missing_follow_fields = [field for field in follow_fields if field not in profile]
+                
+                if not missing_follow_fields:
+                    # Since we established mutual follow earlier, these should be True
+                    is_following = profile.get("is_following")
+                    follows_back = profile.get("follows_back") 
+                    can_message = profile.get("can_message")
+                    
+                    if is_following and follows_back and can_message:
+                        self.log_test("User Profile Follow Status", True, "All follow status fields correct for mutual follow", 
+                                    {"is_following": is_following, "follows_back": follows_back, "can_message": can_message})
+                    else:
+                        self.log_test("User Profile Follow Status", False, "Follow status fields incorrect for mutual follow", 
+                                    {"is_following": is_following, "follows_back": follows_back, "can_message": can_message})
+                else:
+                    self.log_test("User Profile Follow Status", False, f"Missing follow status fields: {missing_follow_fields}", 
+                                {"profile": profile})
+            else:
+                self.log_test("User Profile Follow Status", False, f"HTTP {response.status_code}", 
+                            {"response": response.text})
+                
+        except Exception as e:
+            self.log_test("User Profile Follow Status", False, f"Request failed: {str(e)}")
+
+    def test_user_profile_nonexistent_user(self):
+        """Test user profile API with non-existent user ID"""
+        if not self.access_token_a:
+            self.log_test("User Profile Non-existent", False, "Skipped - missing authenticated user")
+            return
+            
+        try:
+            headers_a = {"Authorization": f"Bearer {self.access_token_a}"}
+            fake_user_id = str(uuid.uuid4())  # Generate a fake UUID
+            response = requests.get(f"{self.base_url}/users/profile/{fake_user_id}", headers=headers_a)
+            
+            if response.status_code == 404:
+                self.log_test("User Profile Non-existent", True, "Correctly returns 404 for non-existent user", 
+                            {"fake_user_id": fake_user_id})
+            else:
+                self.log_test("User Profile Non-existent", False, f"Expected 404, got HTTP {response.status_code}", 
+                            {"response": response.text})
+                
+        except Exception as e:
+            self.log_test("User Profile Non-existent", False, f"Request failed: {str(e)}")
+
+    def test_user_profile_self_view(self):
+        """Test user profile API when viewing own profile"""
+        if not self.access_token_a or not self.user_id_a:
+            self.log_test("User Profile Self View", False, "Skipped - missing authenticated user")
+            return
+            
+        try:
+            headers_a = {"Authorization": f"Bearer {self.access_token_a}"}
+            response = requests.get(f"{self.base_url}/users/profile/{self.user_id_a}", headers=headers_a)
+            
+            if response.status_code == 200:
+                profile = response.json()
+                
+                # When viewing own profile, follow status should be False (can't follow yourself)
+                is_following = profile.get("is_following")
+                follows_back = profile.get("follows_back")
+                can_message = profile.get("can_message")
+                
+                if not is_following and not follows_back and not can_message:
+                    self.log_test("User Profile Self View", True, "Self-profile follow status correctly set to False", 
+                                {"is_following": is_following, "follows_back": follows_back, "can_message": can_message})
+                else:
+                    self.log_test("User Profile Self View", False, "Self-profile follow status should be False", 
+                                {"is_following": is_following, "follows_back": follows_back, "can_message": can_message})
+            else:
+                self.log_test("User Profile Self View", False, f"HTTP {response.status_code}", 
+                            {"response": response.text})
+                
+        except Exception as e:
+            self.log_test("User Profile Self View", False, f"Request failed: {str(e)}")
+
+    def test_user_profile_no_follow_relationship(self):
+        """Test user profile API with no follow relationship"""
+        # Create a third user to test no-follow scenario
+        try:
+            access_token_c, user_id_c, user_c_data = self.register_test_user("c")
+            
+            if not access_token_c or not self.access_token_a:
+                self.log_test("User Profile No Follow", False, "Skipped - failed to create test user C")
+                return
+                
+            headers_a = {"Authorization": f"Bearer {self.access_token_a}"}
+            response = requests.get(f"{self.base_url}/users/profile/{user_id_c}", headers=headers_a)
+            
+            if response.status_code == 200:
+                profile = response.json()
+                
+                # No follow relationship should exist
+                is_following = profile.get("is_following")
+                follows_back = profile.get("follows_back")
+                can_message = profile.get("can_message")
+                
+                if not is_following and not follows_back and not can_message:
+                    self.log_test("User Profile No Follow", True, "No follow relationship correctly detected", 
+                                {"is_following": is_following, "follows_back": follows_back, "can_message": can_message})
+                else:
+                    self.log_test("User Profile No Follow", False, "Follow status should be False for no relationship", 
+                                {"is_following": is_following, "follows_back": follows_back, "can_message": can_message})
+            else:
+                self.log_test("User Profile No Follow", False, f"HTTP {response.status_code}", 
+                            {"response": response.text})
+                
+        except Exception as e:
+            self.log_test("User Profile No Follow", False, f"Request failed: {str(e)}")
+
+    def test_user_profile_one_way_follow(self):
+        """Test user profile API with one-way follow relationship"""
+        # Create a fourth user and establish one-way follow
+        try:
+            access_token_d, user_id_d, user_d_data = self.register_test_user("d")
+            
+            if not access_token_d or not self.access_token_a:
+                self.log_test("User Profile One Way Follow", False, "Skipped - failed to create test user D")
+                return
+            
+            # User A follows User D (but D doesn't follow back)
+            headers_a = {"Authorization": f"Bearer {self.access_token_a}"}
+            follow_data = {"target_user_id": user_id_d}
+            follow_response = requests.post(f"{self.base_url}/users/follow", json=follow_data, headers=headers_a)
+            
+            if follow_response.status_code != 200:
+                self.log_test("User Profile One Way Follow", False, "Failed to establish one-way follow")
+                return
+            
+            # Now check profile
+            response = requests.get(f"{self.base_url}/users/profile/{user_id_d}", headers=headers_a)
+            
+            if response.status_code == 200:
+                profile = response.json()
+                
+                # Should be following but not followed back, so can't message
+                is_following = profile.get("is_following")
+                follows_back = profile.get("follows_back")
+                can_message = profile.get("can_message")
+                
+                if is_following and not follows_back and not can_message:
+                    self.log_test("User Profile One Way Follow", True, "One-way follow relationship correctly detected", 
+                                {"is_following": is_following, "follows_back": follows_back, "can_message": can_message})
+                else:
+                    self.log_test("User Profile One Way Follow", False, "One-way follow status incorrect", 
+                                {"is_following": is_following, "follows_back": follows_back, "can_message": can_message})
+            else:
+                self.log_test("User Profile One Way Follow", False, f"HTTP {response.status_code}", 
+                            {"response": response.text})
+                
+        except Exception as e:
+            self.log_test("User Profile One Way Follow", False, f"Request failed: {str(e)}")
+
+    def test_user_profile_integration_with_search(self):
+        """Test user profile API integration with user search"""
+        if not self.access_token_a:
+            self.log_test("User Profile Search Integration", False, "Skipped - missing authenticated user")
+            return
+            
+        try:
+            # First search for users
+            headers_a = {"Authorization": f"Bearer {self.access_token_a}"}
+            search_response = requests.get(f"{self.base_url}/users/search?q=Test User", headers=headers_a)
+            
+            if search_response.status_code == 200:
+                users = search_response.json()
+                if isinstance(users, list) and len(users) > 0:
+                    # Get profile for first search result
+                    first_user = users[0]
+                    user_id = first_user.get("_id")
+                    
+                    profile_response = requests.get(f"{self.base_url}/users/profile/{user_id}", headers=headers_a)
+                    
+                    if profile_response.status_code == 200:
+                        profile = profile_response.json()
+                        
+                        # Verify profile data matches search result
+                        if (profile.get("_id") == first_user.get("_id") and 
+                            profile.get("username") == first_user.get("username")):
+                            self.log_test("User Profile Search Integration", True, "Profile API integrates correctly with search", 
+                                        {"user_id": user_id, "username": profile.get("username")})
+                        else:
+                            self.log_test("User Profile Search Integration", False, "Profile data doesn't match search result", 
+                                        {"search_user": first_user, "profile_user": profile})
+                    else:
+                        self.log_test("User Profile Search Integration", False, f"Profile API failed: HTTP {profile_response.status_code}", 
+                                    {"response": profile_response.text})
+                else:
+                    self.log_test("User Profile Search Integration", False, "No users found in search", 
+                                {"response": users})
+            else:
+                self.log_test("User Profile Search Integration", False, f"Search API failed: HTTP {search_response.status_code}", 
+                            {"response": search_response.text})
+                
+        except Exception as e:
+            self.log_test("User Profile Search Integration", False, f"Request failed: {str(e)}")
     
     def test_root_endpoint(self):
         """Test root endpoint returns Zaradam"""
