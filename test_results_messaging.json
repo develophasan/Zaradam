@@ -1,0 +1,126 @@
+[
+  {
+    "test": "Root Endpoint",
+    "success": true,
+    "message": "API returns Zaradam correctly",
+    "details": {
+      "response": {
+        "message": "Zaradam API is running!"
+      }
+    },
+    "timestamp": "2025-07-24T14:47:50.092403"
+  },
+  {
+    "test": "User Registration (A)",
+    "success": true,
+    "message": "User registered successfully",
+    "details": {
+      "user_id": "4731ffdb-965c-488e-aa3f-9e4c06135662",
+      "username": "testuser_a_1753368470"
+    },
+    "timestamp": "2025-07-24T14:47:50.365974"
+  },
+  {
+    "test": "User Registration (B)",
+    "success": true,
+    "message": "User registered successfully",
+    "details": {
+      "user_id": "6c02b287-b1f5-448a-ba29-8b4bf2c485e8",
+      "username": "testuser_b_1753368471"
+    },
+    "timestamp": "2025-07-24T14:47:51.611865"
+  },
+  {
+    "test": "User Search",
+    "success": true,
+    "message": "User search working correctly",
+    "details": {
+      "results_count": 1,
+      "found_target": true
+    },
+    "timestamp": "2025-07-24T14:47:51.633528"
+  },
+  {
+    "test": "Follow User",
+    "success": true,
+    "message": "User A successfully followed User B",
+    "details": {
+      "message": "Kullan\u0131c\u0131 takip edildi"
+    },
+    "timestamp": "2025-07-24T14:47:51.700288"
+  },
+  {
+    "test": "Mutual Follow",
+    "success": true,
+    "message": "User B successfully followed User A",
+    "details": {
+      "message": "Kullan\u0131c\u0131 takip edildi"
+    },
+    "timestamp": "2025-07-24T14:47:51.728753"
+  },
+  {
+    "test": "Message Sending",
+    "success": true,
+    "message": "Message sent successfully",
+    "details": {
+      "message_id": "56f1a7d5-66a9-4562-81b7-4cffde6f6b8c"
+    },
+    "timestamp": "2025-07-24T14:47:51.760784"
+  },
+  {
+    "test": "Conversations List (User A)",
+    "success": true,
+    "message": "Conversations retrieved successfully",
+    "details": {
+      "conversations_count": 1
+    },
+    "timestamp": "2025-07-24T14:47:51.778435"
+  },
+  {
+    "test": "Conversations List (User B)",
+    "success": true,
+    "message": "Conversations retrieved successfully",
+    "details": {
+      "conversations_count": 1
+    },
+    "timestamp": "2025-07-24T14:47:51.798799"
+  },
+  {
+    "test": "Conversation Messages",
+    "success": true,
+    "message": "Messages retrieved successfully",
+    "details": {
+      "messages_count": 1
+    },
+    "timestamp": "2025-07-24T14:47:51.816982"
+  },
+  {
+    "test": "Notifications Retrieval",
+    "success": true,
+    "message": "All expected notifications found",
+    "details": {
+      "notifications_count": 2,
+      "has_follow": true,
+      "has_message": true
+    },
+    "timestamp": "2025-07-24T14:47:51.838983"
+  },
+  {
+    "test": "Unread Notifications Count",
+    "success": true,
+    "message": "Unread count: 2",
+    "details": {
+      "count": 2
+    },
+    "timestamp": "2025-07-24T14:47:51.859660"
+  },
+  {
+    "test": "Mark Notification Read",
+    "success": true,
+    "message": "Notification marked as read",
+    "details": {
+      "notification_id": "0368fe80-14f1-4186-ade0-56a532a8c403"
+    },
+    "timestamp": "2025-07-24T14:47:51.900124"
+  }
+]
