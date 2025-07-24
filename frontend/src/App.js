@@ -2980,9 +2980,14 @@ const UserProfilePage = () => {
             </button>
             
             {!isFollowing && (
-              <p className="text-center text-zinc-500 text-xs">
-                Mesaj göndermek için önce takip etmelisiniz
-              </p>
+              <div className="bg-amber-900/20 border border-amber-700/50 p-3 rounded-xl">
+                <p className="text-center text-amber-300 text-sm">
+                  <span className="block font-medium">🔒 Mesajlaşma Kısıtlaması</span>
+                  <span className="text-xs text-amber-400">
+                    Zaradam'da güvenlik için sadece karşılıklı takip eden kullanıcılar mesajlaşabilir
+                  </span>
+                </p>
+              </div>
             )}
           </div>
         </div>
