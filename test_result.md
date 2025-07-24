@@ -150,6 +150,42 @@
           agent: "testing"
           comment: "Privacy levels implemented - supports public, followers, private with backwards compatibility"
 
+  - task: "Complete messaging system backend API"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Need to implement complete messaging API with send/receive/list messages"
+
+  - task: "Implement real-time notifications system"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "high"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Need to add notification system for messages and social interactions"
+
+  - task: "Add user following/followers functionality"
+    implemented: false
+    working: "NA"
+    file: "backend/server.py"
+    stuck_count: 0
+    priority: "medium"
+    needs_retesting: false
+    status_history:
+        - working: "NA"
+          agent: "main"
+          comment: "Need to implement follow/unfollow system for social features"
+
 ## frontend:
   - task: "Change app name from Zarver to Zaradam in UI"
     implemented: true
