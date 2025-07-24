@@ -146,7 +146,7 @@ const PrivacyModal = ({ isOpen, onAccept, onDecline }) => {
           <div className="space-y-4">
             <div>
               <h4 className="text-white font-semibold mb-2">1. Veri Sorumlusu</h4>
-              <p>Zarver Uygulaması, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca veri sorumlusu sıfatıyla hareket etmektedir.</p>
+              <p>Zaradam Uygulaması, 6698 sayılı Kişisel Verilerin Korunması Kanunu ("KVKK") uyarınca veri sorumlusu sıfatıyla hareket etmektedir.</p>
             </div>
             
             <div>
