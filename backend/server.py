@@ -1186,6 +1186,81 @@ async def export_user_data(admin: dict = Depends(get_admin_user)):
     
     return export_data
 
+# ADMIN SUBSCRIPTION MANAGEMENT
+
+@app.post("/api/admin/user/{user_id}/toggle-premium")
+async def toggle_user_premium(user_id: str, current_user: dict = Depends(get_admin_user)):
+    """Toggle user premium status (Admin only)"""
+    try:
+        user = users_collection.find_one({"_id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        current_premium = user.get("subscription", {}).get("is_premium", False)
+        new_premium_status = not current_premium
+        
+        if new_premium_status:
+            # Premium yap
+            next_payment_date = datetime.now() + timedelta(days=30)
+            users_collection.update_one(
+                {"_id": user_id},
+                {"$set": {
+                    "subscription.is_premium": True,
+                    "subscription.subscription_status": "active_admin",
+                    "subscription.subscription_id": f"admin_grant_{int(datetime.now().timestamp())}",
+                    "subscription.next_payment_date": next_payment_date,
+                    "subscription.queries_used_today": 0
+                }}
+            )
+            message = f"{user['name']} kullanıcısına admin tarafından premium verildi"
+        else:
+            # Premium kaldır
+            users_collection.update_one(
+                {"_id": user_id},
+                {"$set": {
+                    "subscription.is_premium": False,
+                    "subscription.subscription_status": "cancelled_admin",
+                    "subscription.subscription_id": None,
+                    "subscription.next_payment_date": None
+                }}
+            )
+            message = f"{user['name']} kullanıcısının premium üyeliği admin tarafından kaldırıldı"
+        
+        return {
+            "success": True, 
+            "message": message,
+            "new_status": "premium" if new_premium_status else "free"
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
+@app.get("/api/admin/subscription-stats")
+async def get_subscription_stats(current_user: dict = Depends(get_admin_user)):
+    """Get subscription statistics (Admin only)"""
+    try:
+        total_users = users_collection.count_documents({})
+        premium_users = users_collection.count_documents({"subscription.is_premium": True})
+        free_users = total_users - premium_users
+        
+        # Son 30 günde oluşturulan premium üyelikler
+        thirty_days_ago = datetime.now() - timedelta(days=30)
+        recent_premium = users_collection.count_documents({
+            "subscription.is_premium": True,
+            "subscription.next_payment_date": {"$gte": thirty_days_ago}
+        })
+        
+        return {
+            "total_users": total_users,
+            "premium_users": premium_users,
+            "free_users": free_users,
+            "premium_percentage": round((premium_users / total_users * 100) if total_users > 0 else 0, 1),
+            "recent_premium": recent_premium
+        }
+        
+    except Exception as e:
+        raise HTTPException(status_code=500, detail=str(e))
+
 # Normal User Endpoints (existing ones)
 @app.post("/api/decisions/create")
 async def create_decision(decision_data: DecisionCreate, current_user: dict = Depends(get_current_user)):
