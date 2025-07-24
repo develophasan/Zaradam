@@ -2307,26 +2307,58 @@ const MessagesPage = () => {
                       <img 
                         src={user.avatar} 
                         alt={user.name}
-                        className="w-10 h-10 rounded-xl object-cover"
+                        className="w-10 h-10 rounded-xl object-cover cursor-pointer"
+                        onClick={() => navigate(`/user/${user._id}`)}
                       />
                       <div>
-                        <div className="text-white font-semibold">{user.name}</div>
+                        <div 
+                          className="text-white font-semibold cursor-pointer hover:text-blue-400 transition-colors"
+                          onClick={() => navigate(`/user/${user._id}`)}
+                        >
+                          {user.name}
+                        </div>
                         <div className="text-zinc-400 text-sm">@{user.username}</div>
                       </div>
                     </div>
                     
-                    {!user.is_following && (
+                    <div className="flex items-center space-x-2">
                       <button
-                        onClick={() => handleFollowUser(user._id)}
-                        className="bg-blue-900 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-800 transition-colors border border-blue-700"
+                        onClick={() => navigate(`/user/${user._id}`)}
+                        className="bg-zinc-700 text-white px-3 py-1 rounded-lg text-sm hover:bg-zinc-600 transition-colors border border-zinc-600"
                       >
-                        Takip Et
+                        Profil
                       </button>
-                    )}
-                    
-                    {user.is_following && (
-                      <span className="text-green-400 text-sm">✓ Takip Ediliyor</span>
-                    )}
+                      
+                      {!user.is_following ? (
+                        <button
+                          onClick={() => handleFollowUser(user._id)}
+                          className="bg-blue-900 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-800 transition-colors border border-blue-700"
+                        >
+                          Takip Et
+                        </button>
+                      ) : (
+                        <button
+                          onClick={() => {
+                            // Navigate to messages with this user
+                            navigate('/messages', { 
+                              state: { 
+                                startConversation: {
+                                  partner: {
+                                    id: user._id,
+                                    name: user.name,
+                                    username: user.username,
+                                    avatar: user.avatar
+                                  }
+                                }
+                              }
+                            });
+                          }}
+                          className="bg-green-600 text-white px-3 py-1 rounded-lg text-sm hover:bg-green-500 transition-colors"
+                        >
+                          Mesaj At
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>
