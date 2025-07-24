@@ -1183,9 +1183,12 @@ const HomePage = () => {
             </div>
             <h1 className="text-2xl font-bold text-white">ZARADAM</h1>
           </div>
-          <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-xl overflow-hidden border-2 border-zinc-700">
-            <img src={user?.avatar} alt="Profile" className="w-full h-full object-cover" />
-          </button>
+          <div className="flex items-center space-x-4">
+            <NotificationBell />
+            <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-xl overflow-hidden border-2 border-zinc-700">
+              <img src={user?.avatar} alt="Profile" className="w-full h-full object-cover" />
+            </button>
+          </div>
         </div>
       </header>
 
