@@ -1011,6 +1011,7 @@ const HomePage = () => {
   const [alternatives, setAlternatives] = useState([]);
   const [loading, setLoading] = useState(false);
   const [decisionId, setDecisionId] = useState(null);
+  const [privacyLevel, setPrivacyLevel] = useState("public");
 
   const handleSubmit = async () => {
     if (decisionText.trim()) {
@@ -1020,7 +1021,7 @@ const HomePage = () => {
           method: 'POST',
           data: {
             text: decisionText,
-            is_public: true
+            privacy_level: privacyLevel
           }
         });
         
