@@ -193,47 +193,61 @@ const NotificationBell = () => {
       </button>
 
       {showNotifications && (
-        <div className="absolute right-0 top-8 w-80 max-w-[calc(100vw-2rem)] bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 max-h-96 overflow-hidden">
-          <div className="p-4 border-b border-zinc-800">
-            <h3 className="font-bold text-white">Bildirimler</h3>
-          </div>
+        <>
+          {/* Mobile backdrop */}
+          <div 
+            className="fixed inset-0 bg-black bg-opacity-50 z-40 md:hidden"
+            onClick={() => setShowNotifications(false)}
+          ></div>
           
-          <div className="max-h-80 overflow-y-auto">
-            {notifications.length === 0 ? (
-              <div className="p-4 text-center text-zinc-400">
-                Henüz bildiriminiz yok
-              </div>
-            ) : (
-              notifications.map((notification, index) => (
-                <div
-                  key={index}
-                  onClick={() => !notification.read && markAsRead(notification._id)}
-                  className={`p-4 border-b border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors ${
-                    !notification.read ? 'bg-zinc-800' : ''
-                  }`}
-                >
-                  <div className="flex items-start space-x-3">
-                    <div className="text-2xl">
-                      {notification.type === 'message' ? '💬' : 
-                       notification.type === 'follow' ? '👥' : '🔔'}
-                    </div>
-                    <div className="flex-1 min-w-0">
-                      <p className={`text-sm break-words ${notification.read ? 'text-zinc-400' : 'text-white font-medium'}`}>
-                        {notification.content}
-                      </p>
-                      <p className="text-xs text-zinc-500 mt-1">
-                        {notification.created_at}
-                      </p>
-                    </div>
-                    {!notification.read && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
-                    )}
-                  </div>
+          <div className="absolute right-0 top-8 w-80 max-w-[calc(100vw-2rem)] bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 max-h-96 overflow-hidden md:right-0">
+            <div className="p-4 border-b border-zinc-800 flex items-center justify-between">
+              <h3 className="font-bold text-white">Bildirimler</h3>
+              <button 
+                onClick={() => setShowNotifications(false)}
+                className="text-zinc-400 hover:text-white md:hidden"
+              >
+                ✕
+              </button>
+            </div>
+            
+            <div className="max-h-80 overflow-y-auto">
+              {notifications.length === 0 ? (
+                <div className="p-4 text-center text-zinc-400">
+                  Henüz bildiriminiz yok
                 </div>
-              ))
-            )}
+              ) : (
+                notifications.map((notification, index) => (
+                  <div
+                    key={index}
+                    onClick={() => !notification.read && markAsRead(notification._id)}
+                    className={`p-4 border-b border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors ${
+                      !notification.read ? 'bg-zinc-800' : ''
+                    }`}
+                  >
+                    <div className="flex items-start space-x-3">
+                      <div className="text-2xl">
+                        {notification.type === 'message' ? '💬' : 
+                         notification.type === 'follow' ? '👥' : '🔔'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                        <p className={`text-sm break-words ${notification.read ? 'text-zinc-400' : 'text-white font-medium'}`}>
+                          {notification.content}
+                        </p>
+                        <p className="text-xs text-zinc-500 mt-1">
+                          {notification.created_at}
+                        </p>
+                      </div>
+                      {!notification.read && (
+                        <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
+                      )}
+                    </div>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
-        </div>
+        </>
       )}
     </div>
   );
