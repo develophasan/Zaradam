@@ -70,7 +70,7 @@ class AdminLogin(BaseModel):
 
 class DecisionCreate(BaseModel):
     text: str
-    is_public: bool = True
+    privacy_level: str = "public"  # "public", "followers", "private"
 
 class MessageCreate(BaseModel):
     recipient_id: str
