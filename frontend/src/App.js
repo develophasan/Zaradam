@@ -159,15 +159,32 @@ const NotificationBell = () => {
     }
   };
 
-  const markAsRead = async (notificationId) => {
-    try {
-      await apiCall(`${API}/notifications/${notificationId}/read`, {
-        method: 'PUT'
+  const handleNotificationClick = async (notification) => {
+    // Mark as read first
+    if (!notification.read) {
+      await markAsRead(notification._id);
+    }
+    
+    // Handle different notification types
+    if (notification.type === 'follow' && notification.data?.follower_id) {
+      // Navigate to follower's profile
+      navigate(`/user/${notification.data.follower_id}`);
+      setShowNotifications(false);
+    } else if (notification.type === 'message' && notification.data?.sender_id) {
+      // Navigate to messages with sender
+      navigate('/messages', {
+        state: {
+          startConversation: {
+            partner: {
+              id: notification.data.sender_id,
+              name: notification.data.sender_name,
+              username: notification.data.sender_name, // fallback
+              avatar: "https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&h=150&fit=crop&crop=face"
+            }
+          }
+        }
       });
-      fetchUnreadCount();
-      fetchNotifications();
-    } catch (error) {
-      console.error('Failed to mark notification as read:', error);
+      setShowNotifications(false);
     }
   };
 
