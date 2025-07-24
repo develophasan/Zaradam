@@ -1397,19 +1397,9 @@ const HomePage = () => {
             <h1 className="text-2xl font-bold text-white">ZARADAM</h1>
           </div>
           <div className="flex items-center space-x-3">
-            {/* Query Counter */}
-            {subscriptionStatus && !subscriptionStatus.is_premium && (
-              <div className="bg-zinc-800 px-3 py-1 rounded-lg border border-zinc-700">
-                <span className="text-xs text-zinc-400">Kalan sorgu:</span>
-                <span className="text-white font-bold ml-1">
-                  {subscriptionStatus.queries_remaining}
-                </span>
-              </div>
-            )}
-            
             {/* Premium Badge or Upgrade Button */}
             {subscriptionStatus?.is_premium ? (
-              <div className="bg-green-900 px-3 py-1 rounded-lg border border-green-700">
+              <div className="bg-green-900 px-2 py-1 rounded-lg border border-green-700">
                 <span className="text-green-300 text-xs font-bold">✨ Premium</span>
               </div>
             ) : (
@@ -1428,20 +1418,63 @@ const HomePage = () => {
           </div>
         </div>
         
-        {/* Query Limit Warning */}
-        {subscriptionStatus && !subscriptionStatus.is_premium && subscriptionStatus.queries_remaining === 0 && (
-          <div className="bg-red-900 border-t border-red-700 px-4 py-3">
-            <div className="max-w-lg mx-auto flex items-center justify-between">
-              <div>
-                <p className="text-red-300 text-sm font-medium">Günlük sorgu limitiniz doldu!</p>
-                <p className="text-red-400 text-xs">Premium üyelikle sınırsız sorgu hakkı kazanın</p>
+        {/* Query Counter Bar - Free Users Only */}
+        {subscriptionStatus && !subscriptionStatus.is_premium && (
+          <div className="bg-zinc-800 border-t border-zinc-700">
+            <div className="max-w-lg mx-auto px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center space-x-3">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-6 h-6 bg-blue-600 rounded-full flex items-center justify-center">
+                      <span className="text-white text-xs font-bold">{subscriptionStatus.queries_remaining}</span>
+                    </div>
+                    <span className="text-zinc-300 text-sm font-medium">Kalan ücretsiz sorgu</span>
+                  </div>
+                  
+                  {/* Progress bar */}
+                  <div className="flex space-x-1">
+                    {[1, 2, 3].map((i) => (
+                      <div
+                        key={i}
+                        className={`w-2 h-2 rounded-full ${
+                          i <= subscriptionStatus.queries_remaining
+                            ? 'bg-blue-500'
+                            : 'bg-zinc-600'
+                        }`}
+                      />
+                    ))}
+                  </div>
+                </div>
+                
+                {subscriptionStatus.queries_remaining === 0 && (
+                  <button
+                    onClick={() => navigate('/subscription')}
+                    className="bg-yellow-600 hover:bg-yellow-500 px-3 py-1 rounded-lg text-xs font-bold text-black transition-colors"
+                  >
+                    Premium Al
+                  </button>
+                )}
               </div>
-              <button
-                onClick={() => navigate('/subscription')}
-                className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-white text-sm font-bold transition-colors"
-              >
-                Premium Al
-              </button>
+            </div>
+          </div>
+        )}
+        
+        {/* Query Limit Warning - Separate warning bar when no queries left */}
+        {subscriptionStatus && !subscriptionStatus.is_premium && subscriptionStatus.queries_remaining === 0 && (
+          <div className="bg-gradient-to-r from-red-900/80 to-orange-900/80 border-t border-red-700/50">
+            <div className="max-w-lg mx-auto px-4 py-3">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-red-200 text-sm font-medium">⚡ Günlük limit doldu!</p>
+                  <p className="text-red-300 text-xs">Premium ile sınırsız sorgu hakkı kazanın</p>
+                </div>
+                <button
+                  onClick={() => navigate('/subscription')}
+                  className="bg-red-600 hover:bg-red-500 px-4 py-2 rounded-lg text-white text-sm font-bold transition-colors"
+                >
+                  Premium Al
+                </button>
+              </div>
             </div>
           </div>
         )}
