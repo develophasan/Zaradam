@@ -1192,7 +1192,7 @@ const HomePage = () => {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto p-4 space-y-6">
+      <div className="max-w-lg mx-auto p-4 space-y-6 pb-24">
         {/* Karar Girişi */}
         <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
           <h2 className="text-xl font-bold mb-4 text-white">
