@@ -740,7 +740,7 @@ const AdminDashboard = () => {
             <div className="w-8 h-8 bg-red-900 rounded-lg flex items-center justify-center text-lg border border-red-700">
               🔒
             </div>
-            <h1 className="text-2xl font-bold text-white">ZARVER ADMİN</h1>
+            <h1 className="text-2xl font-bold text-white">ZARADAM ADMİN</h1>
           </div>
           <div className="flex items-center space-x-4">
             <span className="text-zinc-400">Admin Panel</span>
