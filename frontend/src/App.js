@@ -2016,7 +2016,7 @@ const MessagesPage = () => {
         )}
 
         {!selectedConversation ? (
-          <div className="p-4">
+          <div className="p-4 pb-24">
             {conversations.length === 0 ? (
               <div className="text-center py-16">
                 <div className="text-4xl mb-4">💬</div>
@@ -2030,7 +2030,7 @@ const MessagesPage = () => {
                 </button>
               </div>
             ) : (
-              <div className="space-y-3">
+              <div className="space-y-3 pb-4">
                 {conversations.map((conversation, index) => (
                   <div
                     key={index}
