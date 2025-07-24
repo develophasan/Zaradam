@@ -2608,6 +2608,19 @@ const SubscriptionPage = () => {
           </div>
         </div>
 
+        {/* Test Mode Warning */}
+        {!subscriptionStatus?.is_premium && (
+          <div className="bg-blue-900/20 border border-blue-700/50 rounded-2xl p-4 mb-6">
+            <h3 className="text-blue-300 font-bold mb-2">🧪 Test Modunda</h3>
+            <p className="text-blue-200 text-sm mb-3">
+              Şu anda test modundayız. Gerçek ödeme yapmadan premium özelliklerini test edebilirsiniz.
+            </p>
+            <p className="text-blue-300 text-xs">
+              Kart bilgilerini doldurup "Premium'a Geç" butonuna basarak test premium üyeliği alabilirsiniz.
+            </p>
+          </div>
+        )}
+
         {/* Subscription Actions */}
         {!subscriptionStatus?.is_premium ? (
           <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
