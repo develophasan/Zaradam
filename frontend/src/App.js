@@ -2859,28 +2859,17 @@ const UserProfilePage = () => {
 
   const fetchUserProfile = async () => {
     try {
-      // Get all users and find by ID (since search API searches by name/username)
-      const searchResults = await apiCall(`${API}/users/search?q=`);
-      const foundUser = searchResults.find(u => u._id === userId);
-      
-      if (!foundUser) {
-        // Try alternative: search by partial match to get more results
-        const allUsers = await apiCall(`${API}/users/search?q=a`); // Get many results
-        const targetUser = allUsers.find(u => u._id === userId);
-        
-        if (targetUser) {
-          setUser(targetUser);
-          setIsFollowing(targetUser.is_following);
-        } else {
-          throw new Error('Kullanıcı bulunamadı');
-        }
-      } else {
-        setUser(foundUser);
-        setIsFollowing(foundUser.is_following);
-      }
+      // Use the new dedicated profile API
+      const userData = await apiCall(`${API}/users/profile/${userId}`);
+      setUser(userData);
+      setIsFollowing(userData.is_following);
     } catch (error) {
       console.error('Failed to fetch user profile:', error);
-      alert('Kullanıcı profili yüklenemedi');
+      if (error.response?.status === 404) {
+        alert('Kullanıcı bulunamadı');
+      } else {
+        alert('Kullanıcı profili yüklenemedi: ' + (error.response?.data?.detail || error.message));
+      }
       navigate(-1);
     }
     setLoading(false);
