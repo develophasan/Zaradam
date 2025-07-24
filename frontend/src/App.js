@@ -1583,7 +1583,7 @@ const HistoryPage = () => {
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto p-4">
+      <div className="max-w-lg mx-auto p-4 pb-24">
         <div className="space-y-4">
           {decisions.length === 0 ? (
             <div className="text-center py-16">
