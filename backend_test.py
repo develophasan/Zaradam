@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 """
 Zaradam Backend API Test Suite
-Tests all the new functionality including app name changes, profile photo upload, 
-profile updates, and privacy levels for decisions.
+Tests all functionality including messaging and notification system APIs.
 """
 
 import requests
 import json
 import base64
 import uuid
+import time
 from datetime import datetime
 
 # Get backend URL from frontend .env
@@ -17,8 +17,10 @@ BACKEND_URL = "https://48ddba30-6746-414b-a048-15f5858a2a51.preview.emergentagen
 class ZaradamAPITester:
     def __init__(self):
         self.base_url = BACKEND_URL
-        self.access_token = None
-        self.user_id = None
+        self.access_token_a = None
+        self.user_id_a = None
+        self.access_token_b = None
+        self.user_id_b = None
         self.test_results = []
         
     def log_test(self, test_name, success, message, details=None):
