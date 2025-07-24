@@ -759,6 +759,78 @@ class ZaradamAPITester:
         
         return self.test_results
 
+    def run_user_profile_tests(self):
+        """Run comprehensive user profile API tests"""
+        print("🚀 Starting Zaradam User Profile API Tests")
+        print("=" * 60)
+        
+        # Step 1: Register test users if not already done
+        if not (self.access_token_a and self.access_token_b):
+            print("\n📝 Step 1: Registering test users...")
+            self.access_token_a, self.user_id_a, self.user_a_data = self.register_test_user("a")
+            time.sleep(1)
+            self.access_token_b, self.user_id_b, self.user_b_data = self.register_test_user("b")
+            
+            if not (self.access_token_a and self.access_token_b):
+                print("❌ Failed to register test users. Stopping tests.")
+                return
+            
+            # Establish mutual follow for testing
+            print("\n👥 Setting up mutual follow relationship...")
+            self.test_follow_system()
+        
+        # Step 2: Basic profile API functionality
+        print("\n📋 Step 2: Testing basic profile API...")
+        self.test_user_profile_api_basic()
+        
+        # Step 3: Follow status fields
+        print("\n🔗 Step 3: Testing follow status fields...")
+        self.test_user_profile_follow_status()
+        
+        # Step 4: Non-existent user handling
+        print("\n❌ Step 4: Testing non-existent user handling...")
+        self.test_user_profile_nonexistent_user()
+        
+        # Step 5: Self-profile viewing
+        print("\n👤 Step 5: Testing self-profile viewing...")
+        self.test_user_profile_self_view()
+        
+        # Step 6: No follow relationship
+        print("\n🚫 Step 6: Testing no follow relationship...")
+        self.test_user_profile_no_follow_relationship()
+        
+        # Step 7: One-way follow relationship
+        print("\n➡️ Step 7: Testing one-way follow relationship...")
+        self.test_user_profile_one_way_follow()
+        
+        # Step 8: Integration with search
+        print("\n🔍 Step 8: Testing integration with user search...")
+        self.test_user_profile_integration_with_search()
+        
+        # Summary
+        print("\n" + "=" * 60)
+        print("📊 USER PROFILE API TEST SUMMARY")
+        print("=" * 60)
+        
+        passed = sum(1 for result in self.test_results if result["success"])
+        total = len(self.test_results)
+        
+        print(f"Total Tests: {total}")
+        print(f"Passed: {passed}")
+        print(f"Failed: {total - passed}")
+        print(f"Success Rate: {(passed/total)*100:.1f}%")
+        
+        # Failed tests details
+        failed_tests = [result for result in self.test_results if not result["success"]]
+        if failed_tests:
+            print("\n❌ FAILED TESTS:")
+            for test in failed_tests:
+                print(f"  - {test['test']}: {test['message']}")
+        else:
+            print("\n✅ ALL TESTS PASSED!")
+        
+        return self.test_results
+
 if __name__ == "__main__":
     tester = ZaradamAPITester()
     
