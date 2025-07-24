@@ -1482,11 +1482,66 @@ const HistoryPage = () => {
 
 const ProfilePage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user, logout, setUser } = useAuth();
+  const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
+  const [showPhotoUpload, setShowPhotoUpload] = useState(false);
 
   const handleLogout = () => {
     logout();
     navigate('/');
+  };
+
+  const handlePhotoUpload = async (event) => {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    // Check file size (max 2MB)
+    if (file.size > 2 * 1024 * 1024) {
+      alert('Fotoğraf boyutu en fazla 2MB olabilir');
+      return;
+    }
+
+    // Check file type
+    if (!file.type.startsWith('image/')) {
+      alert('Lütfen geçerli bir resim dosyası seçin');
+      return;
+    }
+
+    setIsUploadingPhoto(true);
+
+    try {
+      // Convert to base64
+      const reader = new FileReader();
+      reader.onload = async (e) => {
+        const base64Data = e.target.result;
+        
+        try {
+          const response = await apiCall(`${API}/auth/upload-profile-photo`, {
+            method: 'POST',
+            data: { photo_data: base64Data }
+          });
+
+          if (response.success) {
+            // Update user avatar in auth context
+            const updatedUser = { ...user, avatar: response.avatar };
+            setUser(updatedUser);
+            setShowPhotoUpload(false);
+            alert('Profil fotoğrafı başarıyla güncellendi!');
+          }
+        } catch (error) {
+          console.error('Photo upload error:', error);
+          alert('Fotoğraf yükleme başarısız: ' + (error.response?.data?.detail || error.message));
+        }
+        
+        setIsUploadingPhoto(false);
+      };
+      
+      reader.readAsDataURL(file);
+    } catch (error) {
+      console.error('File processing error:', error);
+      alert('Dosya işleme hatası');
+      setIsUploadingPhoto(false);
+    }
   };
 
   return (
