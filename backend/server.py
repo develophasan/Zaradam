@@ -1010,6 +1010,20 @@ async def export_user_data(admin: dict = Depends(get_admin_user)):
 # Normal User Endpoints (existing ones)
 @app.post("/api/decisions/create")
 async def create_decision(decision_data: DecisionCreate, current_user: dict = Depends(get_current_user)):
+    # Check query limit
+    if not check_query_limit(current_user):
+        subscription = current_user.get("subscription", {})
+        queries_used = subscription.get("queries_used_today", 0)
+        daily_limit = subscription.get("daily_queries", 3)
+        
+        raise HTTPException(
+            status_code=403, 
+            detail=f"Günlük sorgu limitinizi aştınız ({queries_used}/{daily_limit}). Premium üyelik alarak sınırsız sorgu hakkı kazanabilirsiniz."
+        )
+    
+    # Increment query usage
+    increment_query_usage(current_user)
+    
     # Generate alternatives using Gemini
     alternatives = await generate_decision_alternatives(decision_data.text)
     
