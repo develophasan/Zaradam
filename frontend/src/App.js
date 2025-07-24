@@ -1075,6 +1075,45 @@ const HomePage = () => {
             className="w-full p-4 bg-zinc-800 border border-zinc-700 rounded-xl resize-none h-32 focus:outline-none focus:border-white text-white placeholder-zinc-500"
           />
           
+          {/* Privacy Level Selector */}
+          <div className="mt-4 mb-4">
+            <label className="block text-sm font-medium text-zinc-300 mb-2">
+              Kararının gizliliği:
+            </label>
+            <div className="flex space-x-2">
+              <button
+                onClick={() => setPrivacyLevel("public")}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                  privacyLevel === "public"
+                    ? "bg-white text-black border-white"
+                    : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+                }`}
+              >
+                🌍 Herkese Açık
+              </button>
+              <button
+                onClick={() => setPrivacyLevel("followers")}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                  privacyLevel === "followers"
+                    ? "bg-white text-black border-white"
+                    : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+                }`}
+              >
+                👥 Takipçilerime
+              </button>
+              <button
+                onClick={() => setPrivacyLevel("private")}
+                className={`flex-1 py-2 px-3 rounded-lg text-sm font-medium border transition-colors ${
+                  privacyLevel === "private"
+                    ? "bg-white text-black border-white"
+                    : "bg-zinc-800 text-zinc-300 border-zinc-700 hover:bg-zinc-700"
+                }`}
+              >
+                🔒 Sadece Bana
+              </button>
+            </div>
+          </div>
+          
           <button
             onClick={handleSubmit}
             disabled={!decisionText.trim() || loading}
