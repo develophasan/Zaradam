@@ -141,7 +141,7 @@ const PrivacyModal = ({ isOpen, onAccept, onDecline }) => {
         </div>
         
         <div className="p-6 overflow-y-auto max-h-96 text-zinc-300 text-sm leading-relaxed">
-          <h3 className="text-white font-bold mb-4">ZARVER - KİŞİSEL VERİLERİN İŞLENMESİ AYDINLATMA METNİ</h3>
+          <h3 className="text-white font-bold mb-4">ZARADAM - KİŞİSEL VERİLERİN İŞLENMESİ AYDINLATMA METNİ</h3>
           
           <div className="space-y-4">
             <div>
