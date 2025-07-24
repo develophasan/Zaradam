@@ -1,98 +1,387 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, createContext, useContext } from "react";
 import "./App.css";
-import { BrowserRouter, Routes, Route, useNavigate, useLocation } from "react-router-dom";
+import { BrowserRouter, Routes, Route, useNavigate, useLocation, Navigate } from "react-router-dom";
+import axios from "axios";
 
-// Mock kullanıcı verisi
-const mockUser = {
-  id: 1,
-  name: "Ahmet Yılmaz",
-  username: "@ahmetyilmaz",
-  avatar: "https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&h=150&fit=crop&crop=face",
-  stats: {
-    totalDecisions: 47,
-    implementedDecisions: 32,
-    successRate: 68,
-    followers: 125,
-    following: 89
-  }
-};
+const BACKEND_URL = process.env.REACT_APP_BACKEND_URL;
+const API = `${BACKEND_URL}/api`;
 
-// Mock kararlar verisi
-const mockDecisions = [
-  {
-    id: 1,
-    text: "Bu hafta sonu dağa mı çıkayım yoksa evde dinleneyim mi?",
-    options: ["Dağa çık", "Evde dinlen", "Arkadaşlarla buluş", "Yeni bir hobi dene"],
-    diceResult: 1,
-    selectedOption: "Dağa çık",
-    implemented: true,
-    createdAt: "2024-01-15",
-    isPublic: true
-  },
-  {
-    id: 2,
-    text: "Yeni iş teklifini kabul etmeli miyim?",
-    options: ["Kabul et", "Reddet", "Pazarlık yap", "Daha fazla düşün"],
-    diceResult: 3,
-    selectedOption: "Pazarlık yap",
-    implemented: false,
-    createdAt: "2024-01-14",
-    isPublic: false
-  }
-];
+// Auth Context
+const AuthContext = createContext();
+const useAuth = () => useContext(AuthContext);
 
-// Onboarding Sayfası
-const OnboardingPage = () => {
-  const navigate = useNavigate();
+// Auth Provider
+const AuthProvider = ({ children }) => {
+  const [user, setUser] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [token, setToken] = useState(localStorage.getItem('token'));
+
+  useEffect(() => {
+    const initAuth = async () => {
+      if (token) {
+        try {
+          const response = await axios.get(`${API}/auth/me`, {
+            headers: { Authorization: `Bearer ${token}` }
+          });
+          setUser(response.data);
+        } catch (error) {
+          localStorage.removeItem('token');
+          setToken(null);
+        }
+      }
+      setLoading(false);
+    };
+    initAuth();
+  }, [token]);
+
+  const login = async (email, password) => {
+    const response = await axios.post(`${API}/auth/login`, { email, password });
+    const { access_token, user: userData } = response.data;
+    localStorage.setItem('token', access_token);
+    setToken(access_token);
+    setUser(userData);
+    return userData;
+  };
+
+  const register = async (username, email, password, name) => {
+    const response = await axios.post(`${API}/auth/register`, {
+      username, email, password, name
+    });
+    const { access_token, user: userData } = response.data;
+    localStorage.setItem('token', access_token);
+    setToken(access_token);
+    setUser(userData);
+    return userData;
+  };
+
+  const logout = () => {
+    localStorage.removeItem('token');
+    setToken(null);
+    setUser(null);
+  };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 flex items-center justify-center p-4">
-      <div className="max-w-md w-full bg-white rounded-2xl shadow-xl p-8 text-center">
+    <AuthContext.Provider value={{
+      user, login, register, logout, loading,
+      token, setUser
+    }}>
+      {children}
+    </AuthContext.Provider>
+  );
+};
+
+// Protected Route
+const ProtectedRoute = ({ children }) => {
+  const { user, loading } = useAuth();
+  
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="dice-loader">
+          <div className="dice-face">🎲</div>
+        </div>
+      </div>
+    );
+  }
+  
+  return user ? children : <Navigate to="/" />;
+};
+
+// API Helper
+const apiCall = async (endpoint, options = {}) => {
+  const token = localStorage.getItem('token');
+  const config = {
+    ...options,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token && { Authorization: `Bearer ${token}` }),
+      ...options.headers,
+    },
+  };
+  
+  const response = await axios(endpoint, config);
+  return response.data;
+};
+
+// Onboarding/Login Sayfası
+const OnboardingPage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  
+  useEffect(() => {
+    if (user) navigate('/home');
+  }, [user, navigate]);
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-zinc-900 rounded-2xl shadow-2xl p-8 text-center border border-zinc-800">
         <div className="mb-8">
-          <div className="w-20 h-20 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl mx-auto mb-4 flex items-center justify-center text-3xl">
-            🎲
+          <div className="w-20 h-20 bg-white rounded-2xl mx-auto mb-6 flex items-center justify-center text-4xl dice-shadow">
+            ⚫
           </div>
-          <h1 className="text-3xl font-bold text-gray-800 mb-2">Zarver</h1>
-          <p className="text-gray-600">Kararsızlıklarını zar ile çöz!</p>
+          <h1 className="text-4xl font-bold text-white mb-3">ZARVER</h1>
+          <p className="text-zinc-400 text-lg">Kararsızlıklarını zar ile çöz</p>
         </div>
         
         <div className="space-y-6 mb-8">
-          <div className="flex items-start space-x-4">
-            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center flex-shrink-0">
-              ✨
+          <div className="flex items-start space-x-4 text-left">
+            <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center flex-shrink-0 border border-zinc-700">
+              🤖
             </div>
-            <div className="text-left">
-              <h3 className="font-semibold text-gray-800">AI Destekli Çözümler</h3>
-              <p className="text-sm text-gray-600">Kararsızlığını yaz, akıllı alternatifler al</p>
-            </div>
-          </div>
-          
-          <div className="flex items-start space-x-4">
-            <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center flex-shrink-0">
-              🎯
-            </div>
-            <div className="text-left">
-              <h3 className="font-semibold text-gray-800">Zar ile Karar Ver</h3>
-              <p className="text-sm text-gray-600">Şansın seni nereye götürüyor?</p>
+            <div>
+              <h3 className="font-bold text-white text-lg">AI Destekli Çözümler</h3>
+              <p className="text-zinc-400">Kararsızlığını yaz, akıllı alternatifler al</p>
             </div>
           </div>
           
-          <div className="flex items-start space-x-4">
-            <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center flex-shrink-0">
+          <div className="flex items-start space-x-4 text-left">
+            <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center flex-shrink-0 border border-zinc-700">
+              🎲
+            </div>
+            <div>
+              <h3 className="font-bold text-white text-lg">Zar ile Karar Ver</h3>
+              <p className="text-zinc-400">Şansın seni nereye götürüyor?</p>
+            </div>
+          </div>
+          
+          <div className="flex items-start space-x-4 text-left">
+            <div className="w-10 h-10 bg-zinc-800 rounded-xl flex items-center justify-center flex-shrink-0 border border-zinc-700">
               👥
             </div>
-            <div className="text-left">
-              <h3 className="font-semibold text-gray-800">Sosyal Deneyim</h3>
-              <p className="text-sm text-gray-600">Arkadaşlarınla kararlarını paylaş</p>
+            <div>
+              <h3 className="font-bold text-white text-lg">Sosyal Deneyim</h3>
+              <p className="text-zinc-400">Arkadaşlarınla kararlarını paylaş</p>
             </div>
           </div>
         </div>
         
-        <button 
-          onClick={() => navigate('/home')}
-          className="w-full bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-200"
+        <div className="space-y-4">
+          <button 
+            onClick={() => navigate('/login')}
+            className="w-full bg-white text-black py-4 rounded-xl font-bold text-lg hover:bg-zinc-200 transition-all duration-200 shadow-lg"
+          >
+            GİRİŞ YAP
+          </button>
+          
+          <button 
+            onClick={() => navigate('/register')}
+            className="w-full bg-zinc-800 text-white py-4 rounded-xl font-bold text-lg hover:bg-zinc-700 transition-all duration-200 border border-zinc-700"
+          >
+            KAYIT OL
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+// Giriş Sayfası
+const LoginPage = () => {
+  const navigate = useNavigate();
+  const { login } = useAuth();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleLogin = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    
+    try {
+      await login(email, password);
+      navigate('/home');
+    } catch (error) {
+      setError(error.response?.data?.detail || "Giriş başarısız");
+    }
+    setLoading(false);
+  };
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-zinc-900 rounded-2xl shadow-2xl p-8 border border-zinc-800">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-white rounded-xl mx-auto mb-4 flex items-center justify-center text-2xl dice-shadow">
+            ⚫
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Giriş Yap</h1>
+          <p className="text-zinc-400">Hesabına giriş yap</p>
+        </div>
+
+        <form onSubmit={handleLogin} className="space-y-6">
+          <div>
+            <input
+              type="email"
+              placeholder="E-posta"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full p-4 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+              required
+            />
+          </div>
+          
+          <div>
+            <input
+              type="password"
+              placeholder="Şifre"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full p-4 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+              required
+            />
+          </div>
+
+          {error && (
+            <div className="bg-red-900 border border-red-700 text-red-300 p-3 rounded-xl">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-white text-black py-4 rounded-xl font-bold text-lg hover:bg-zinc-200 transition-all duration-200 disabled:opacity-50"
+          >
+            {loading ? "GİRİŞ YAPILIYOR..." : "GİRİŞ YAP"}
+          </button>
+        </form>
+
+        <div className="text-center mt-6">
+          <button
+            onClick={() => navigate('/register')}
+            className="text-zinc-400 hover:text-white transition-colors"
+          >
+            Hesabın yok mu? <span className="text-white font-semibold">Kayıt ol</span>
+          </button>
+        </div>
+
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4 text-zinc-400 hover:text-white text-2xl"
         >
-          Başlayalım!
+          ←
+        </button>
+      </div>
+    </div>
+  );
+};
+
+// Kayıt Sayfası
+const RegisterPage = () => {
+  const navigate = useNavigate();
+  const { register } = useAuth();
+  const [formData, setFormData] = useState({
+    name: "",
+    username: "",
+    email: "",
+    password: ""
+  });
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState("");
+
+  const handleRegister = async (e) => {
+    e.preventDefault();
+    setLoading(true);
+    setError("");
+    
+    try {
+      await register(formData.username, formData.email, formData.password, formData.name);
+      navigate('/home');
+    } catch (error) {
+      setError(error.response?.data?.detail || "Kayıt başarısız");
+    }
+    setLoading(false);
+  };
+
+  const handleChange = (e) => {
+    setFormData({
+      ...formData,
+      [e.target.name]: e.target.value
+    });
+  };
+
+  return (
+    <div className="min-h-screen bg-black flex items-center justify-center p-4">
+      <div className="max-w-md w-full bg-zinc-900 rounded-2xl shadow-2xl p-8 border border-zinc-800">
+        <div className="text-center mb-8">
+          <div className="w-16 h-16 bg-white rounded-xl mx-auto mb-4 flex items-center justify-center text-2xl dice-shadow">
+            ⚫
+          </div>
+          <h1 className="text-3xl font-bold text-white mb-2">Kayıt Ol</h1>
+          <p className="text-zinc-400">Yeni hesap oluştur</p>
+        </div>
+
+        <form onSubmit={handleRegister} className="space-y-4">
+          <input
+            type="text"
+            name="name"
+            placeholder="Adın Soyadın"
+            value={formData.name}
+            onChange={handleChange}
+            className="w-full p-4 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+            required
+          />
+          
+          <input
+            type="text"
+            name="username"
+            placeholder="Kullanıcı Adı"
+            value={formData.username}
+            onChange={handleChange}
+            className="w-full p-4 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+            required
+          />
+          
+          <input
+            type="email"
+            name="email"
+            placeholder="E-posta"
+            value={formData.email}
+            onChange={handleChange}
+            className="w-full p-4 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+            required
+          />
+          
+          <input
+            type="password"
+            name="password"
+            placeholder="Şifre"
+            value={formData.password}
+            onChange={handleChange}
+            className="w-full p-4 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+            required
+          />
+
+          {error && (
+            <div className="bg-red-900 border border-red-700 text-red-300 p-3 rounded-xl">
+              {error}
+            </div>
+          )}
+
+          <button
+            type="submit"
+            disabled={loading}
+            className="w-full bg-white text-black py-4 rounded-xl font-bold text-lg hover:bg-zinc-200 transition-all duration-200 disabled:opacity-50"
+          >
+            {loading ? "KAYIT EDİLİYOR..." : "KAYIT OL"}
+          </button>
+        </form>
+
+        <div className="text-center mt-6">
+          <button
+            onClick={() => navigate('/login')}
+            className="text-zinc-400 hover:text-white transition-colors"
+          >
+            Zaten hesabın var mı? <span className="text-white font-semibold">Giriş yap</span>
+          </button>
+        </div>
+
+        <button
+          onClick={() => navigate('/')}
+          className="absolute top-4 left-4 text-zinc-400 hover:text-white text-2xl"
+        >
+          ←
         </button>
       </div>
     </div>
@@ -102,87 +391,107 @@ const OnboardingPage = () => {
 // Ana Sayfa
 const HomePage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [decisionText, setDecisionText] = useState("");
-  const [showOptions, setShowOptions] = useState(false);
-  const [mockOptions] = useState([
-    "Spor salonuna git",
-    "Evde film izle", 
-    "Arkadaşlarla dışarı çık",
-    "Yeni bir kitap oku"
-  ]);
+  const [alternatives, setAlternatives] = useState([]);
+  const [loading, setLoading] = useState(false);
+  const [decisionId, setDecisionId] = useState(null);
 
-  const handleSubmit = () => {
+  const handleSubmit = async () => {
     if (decisionText.trim()) {
-      setShowOptions(true);
-      // Gerçekte burada GPT API çağrısı yapılacak
+      setLoading(true);
+      try {
+        const response = await apiCall(`${API}/decisions/create`, {
+          method: 'POST',
+          data: {
+            text: decisionText,
+            is_public: true
+          }
+        });
+        
+        setAlternatives(response.alternatives);
+        setDecisionId(response.decision_id);
+      } catch (error) {
+        console.error('Decision creation failed:', error);
+      }
+      setLoading(false);
     }
   };
 
   const handleDiceRoll = () => {
-    navigate('/dice', { state: { options: mockOptions, decisionText } });
+    navigate('/dice', { 
+      state: { 
+        alternatives, 
+        decisionText, 
+        decisionId 
+      } 
+    });
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-black">
       {/* Header */}
-      <header className="bg-white shadow-sm border-b">
+      <header className="bg-zinc-900 border-b border-zinc-800">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">
-            Zarver
-          </h1>
-          <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-full overflow-hidden">
-            <img src={mockUser.avatar} alt="Profile" className="w-full h-full object-cover" />
+          <div className="flex items-center space-x-3">
+            <div className="w-8 h-8 bg-white rounded-lg flex items-center justify-center text-lg dice-shadow">
+              ⚫
+            </div>
+            <h1 className="text-2xl font-bold text-white">ZARVER</h1>
+          </div>
+          <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-xl overflow-hidden border-2 border-zinc-700">
+            <img src={user?.avatar} alt="Profile" className="w-full h-full object-cover" />
           </button>
         </div>
       </header>
 
       <div className="max-w-lg mx-auto p-4 space-y-6">
         {/* Karar Girişi */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm">
-          <h2 className="text-xl font-semibold mb-4 text-gray-800">
+        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+          <h2 className="text-xl font-bold mb-4 text-white">
             Neyin kararsızlığını yaşıyorsun?
           </h2>
           
           <textarea
             value={decisionText}
             onChange={(e) => setDecisionText(e.target.value)}
-            placeholder="Örn: Bu akşam ne yapmalıyım? Evde kalmak mı dışarı çıkmak mı daha iyi olur..."
-            className="w-full p-4 border border-gray-200 rounded-xl resize-none h-32 focus:outline-none focus:border-purple-400 focus:ring-2 focus:ring-purple-100"
+            placeholder="Kararsızlığını buraya yaz..."
+            className="w-full p-4 bg-zinc-800 border border-zinc-700 rounded-xl resize-none h-32 focus:outline-none focus:border-white text-white placeholder-zinc-500"
           />
           
           <button
             onClick={handleSubmit}
-            disabled={!decisionText.trim()}
-            className="w-full mt-4 bg-gradient-to-r from-purple-500 to-blue-500 text-white py-3 rounded-xl font-semibold disabled:opacity-50 disabled:cursor-not-allowed hover:shadow-lg transition-all duration-200"
+            disabled={!decisionText.trim() || loading}
+            className="w-full mt-4 bg-white text-black py-3 rounded-xl font-bold disabled:opacity-50 disabled:cursor-not-allowed hover:bg-zinc-200 transition-all duration-200"
           >
-            Alternatif Üret ✨
+            {loading ? "ALTERNATİFLER ÜRETİLİYOR..." : "ALTERNATİF ÜRET 🤖"}
           </button>
         </div>
 
         {/* AI Seçenekleri */}
-        {showOptions && (
-          <div className="bg-white rounded-2xl p-6 shadow-sm animate-fadeIn">
-            <h3 className="text-lg font-semibold mb-4 text-gray-800">
-              İşte senin için üretilen seçenekler:
+        {alternatives.length > 0 && (
+          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+            <h3 className="text-lg font-bold mb-4 text-white">
+              Senin için üretilen seçenekler:
             </h3>
             
             <div className="space-y-3 mb-6">
-              {mockOptions.map((option, index) => (
-                <div key={index} className="flex items-center space-x-3 p-3 bg-gray-50 rounded-xl">
-                  <div className="w-8 h-8 bg-gradient-to-r from-purple-400 to-blue-400 text-white rounded-full flex items-center justify-center font-bold">
+              {alternatives.map((option, index) => (
+                <div key={index} className="flex items-center space-x-3 p-3 bg-zinc-800 rounded-xl border border-zinc-700">
+                  <div className="w-10 h-10 bg-white text-black rounded-xl flex items-center justify-center font-bold text-lg dice-shadow">
                     {index + 1}
                   </div>
-                  <span className="text-gray-700">{option}</span>
+                  <span className="text-white font-medium">{option}</span>
                 </div>
               ))}
             </div>
             
             <button
               onClick={handleDiceRoll}
-              className="w-full bg-gradient-to-r from-green-500 to-teal-500 text-white py-3 rounded-xl font-semibold hover:shadow-lg transition-all duration-200 flex items-center justify-center space-x-2"
+              className="w-full bg-zinc-800 text-white py-4 rounded-xl font-bold hover:bg-zinc-700 transition-all duration-200 flex items-center justify-center space-x-2 border border-zinc-700"
             >
-              <span>🎲</span>
-              <span>Zar At ve Karar Ver!</span>
+              <span className="text-2xl">🎲</span>
+              <span>ZAR AT VE KARAR VER!</span>
             </button>
           </div>
         )}
@@ -191,20 +500,20 @@ const HomePage = () => {
         <div className="grid grid-cols-2 gap-4">
           <button 
             onClick={() => navigate('/history')}
-            className="bg-white p-4 rounded-xl shadow-sm text-center hover:shadow-md transition-shadow"
+            className="bg-zinc-900 p-4 rounded-xl text-center hover:bg-zinc-800 transition-colors border border-zinc-800"
           >
             <div className="text-2xl mb-2">📈</div>
-            <div className="font-semibold text-gray-800">Geçmiş</div>
-            <div className="text-sm text-gray-600">{mockDecisions.length} karar</div>
+            <div className="font-bold text-white">Geçmiş</div>
+            <div className="text-sm text-zinc-400">Kararların</div>
           </button>
           
           <button 
             onClick={() => navigate('/messages')}
-            className="bg-white p-4 rounded-xl shadow-sm text-center hover:shadow-md transition-shadow"
+            className="bg-zinc-900 p-4 rounded-xl text-center hover:bg-zinc-800 transition-colors border border-zinc-800"
           >
             <div className="text-2xl mb-2">💬</div>
-            <div className="font-semibold text-gray-800">Mesajlar</div>
-            <div className="text-sm text-gray-600">3 yeni</div>
+            <div className="font-bold text-white">Mesajlar</div>
+            <div className="text-sm text-zinc-400">Sohbet</div>
           </button>
         </div>
       </div>
@@ -219,71 +528,91 @@ const HomePage = () => {
 const DicePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { options, decisionText } = location.state || { options: [], decisionText: "" };
+  const { alternatives = [], decisionText = "", decisionId } = location.state || {};
   
   const [isRolling, setIsRolling] = useState(false);
   const [result, setResult] = useState(null);
   const [diceNumber, setDiceNumber] = useState(1);
 
-  const rollDice = () => {
+  const rollDice = async () => {
     setIsRolling(true);
     setResult(null);
     
     // Zar animasyon simülasyonu
     let rollCount = 0;
     const rollInterval = setInterval(() => {
-      setDiceNumber(Math.floor(Math.random() * 6) + 1);
+      setDiceNumber(Math.floor(Math.random() * 4) + 1);
       rollCount++;
       
-      if (rollCount > 10) {
+      if (rollCount > 15) {
         clearInterval(rollInterval);
-        const finalResult = Math.floor(Math.random() * options.length) + 1;
-        setDiceNumber(finalResult);
-        setResult(finalResult);
-        setIsRolling(false);
-        
-        setTimeout(() => {
-          navigate('/result', { 
-            state: { 
-              selectedOption: options[finalResult - 1],
-              diceResult: finalResult,
-              decisionText,
-              options 
-            } 
-          });
-        }, 2000);
+        // Backend'den gerçek sonucu al
+        rollDiceBackend();
       }
     }, 100);
   };
 
+  const rollDiceBackend = async () => {
+    try {
+      const response = await apiCall(`${API}/decisions/${decisionId}/roll`, {
+        method: 'POST'
+      });
+      
+      setDiceNumber(response.dice_result);
+      setResult(response.dice_result);
+      setIsRolling(false);
+      
+      setTimeout(() => {
+        navigate('/result', { 
+          state: { 
+            selectedOption: response.selected_option,
+            diceResult: response.dice_result,
+            decisionText,
+            alternatives,
+            decisionId
+          } 
+        });
+      }, 2500);
+    } catch (error) {
+      console.error('Dice roll failed:', error);
+      setIsRolling(false);
+    }
+  };
+
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-600 via-blue-600 to-teal-500 flex flex-col">
-      <header className="p-4 flex items-center justify-between text-white">
-        <button onClick={() => navigate(-1)} className="text-2xl">←</button>
-        <h1 className="text-xl font-semibold">Zar Atma Zamanı!</h1>
+    <div className="min-h-screen bg-black flex flex-col">
+      <header className="p-4 flex items-center justify-between text-white border-b border-zinc-800">
+        <button onClick={() => navigate(-1)} className="text-2xl hover:text-zinc-400">←</button>
+        <h1 className="text-xl font-bold">ZAR ATMA ZAMANI!</h1>
         <div></div>
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="bg-white/20 backdrop-blur-sm rounded-2xl p-8 text-center max-w-md w-full">
-          <h2 className="text-white text-lg mb-6 leading-relaxed">
+        <div className="bg-zinc-900 rounded-2xl p-8 text-center max-w-md w-full border border-zinc-800">
+          <h2 className="text-white text-lg mb-6 leading-relaxed font-medium">
             "{decisionText}"
           </h2>
           
           {/* Zar */}
           <div className="mb-8">
-            <div className={`w-32 h-32 mx-auto bg-white rounded-2xl shadow-xl flex items-center justify-center text-6xl font-bold text-gray-800 transition-transform duration-100 ${isRolling ? 'animate-bounce' : ''}`}>
-              {diceNumber}
+            <div className={`w-32 h-32 mx-auto bg-white rounded-2xl shadow-2xl flex items-center justify-center text-6xl font-bold text-black transition-transform duration-100 dice-shadow ${isRolling ? 'animate-bounce' : ''}`}>
+              <div className="flex flex-wrap w-20 h-20 items-center justify-center">
+                {Array.from({length: diceNumber}, (_, i) => (
+                  <div key={i} className="w-3 h-3 bg-black rounded-full m-1"></div>
+                ))}
+              </div>
             </div>
           </div>
 
           {/* Seçenekler */}
           <div className="space-y-2 mb-8">
-            {options.map((option, index) => (
+            {alternatives.map((option, index) => (
               <div 
                 key={index} 
-                className={`p-3 rounded-xl text-white transition-all ${
-                  result === index + 1 ? 'bg-white/30 ring-2 ring-white' : 'bg-white/10'
+                className={`p-3 rounded-xl transition-all border ${
+                  result === index + 1 
+                    ? 'bg-white text-black border-white font-bold' 
+                    : 'bg-zinc-800 text-white border-zinc-700'
                 }`}
               >
                 <span className="font-bold mr-2">{index + 1}:</span>
@@ -295,20 +624,20 @@ const DicePage = () => {
           {!isRolling && !result && (
             <button
               onClick={rollDice}
-              className="w-full bg-white text-purple-600 py-4 rounded-xl font-bold text-lg hover:bg-gray-100 transition-colors"
+              className="w-full bg-white text-black py-4 rounded-xl font-bold text-lg hover:bg-zinc-200 transition-colors"
             >
-              🎲 Zar At!
+              🎲 ZAR AT!
             </button>
           )}
 
           {isRolling && (
-            <div className="text-white text-lg font-semibold animate-pulse">
+            <div className="text-white text-lg font-bold animate-pulse">
               Zar atılıyor...
             </div>
           )}
 
           {result && (
-            <div className="text-white text-lg font-semibold">
+            <div className="text-white text-lg font-bold">
               Sonucuna yönlendiriliyor...
             </div>
           )}
@@ -322,83 +651,103 @@ const DicePage = () => {
 const ResultPage = () => {
   const navigate = useNavigate();
   const location = useLocation();
-  const { selectedOption, diceResult, decisionText } = location.state || {};
+  const { selectedOption, diceResult, decisionText, decisionId } = location.state || {};
   const [implemented, setImplemented] = useState(null);
+  const [loading, setLoading] = useState(false);
 
-  const handleImplemented = (didImplement) => {
-    setImplemented(didImplement);
-    // Burada veritabanına kaydedilecek
-    setTimeout(() => {
-      navigate('/home');
-    }, 1500);
+  const handleImplemented = async (didImplement) => {
+    setLoading(true);
+    try {
+      await apiCall(`${API}/decisions/${decisionId}/implement?implemented=${didImplement}`, {
+        method: 'POST'
+      });
+      
+      setImplemented(didImplement);
+      setTimeout(() => {
+        navigate('/home');
+      }, 2000);
+    } catch (error) {
+      console.error('Implementation update failed:', error);
+    }
+    setLoading(false);
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-green-500 to-teal-600 flex flex-col">
-      <header className="p-4 flex items-center justify-between text-white">
-        <button onClick={() => navigate('/home')} className="text-2xl">✕</button>
-        <h1 className="text-xl font-semibold">Kararın Belli!</h1>
+    <div className="min-h-screen bg-black flex flex-col">
+      <header className="p-4 flex items-center justify-between text-white border-b border-zinc-800">
+        <button onClick={() => navigate('/home')} className="text-2xl hover:text-zinc-400">✕</button>
+        <h1 className="text-xl font-bold">KARARIN BELLİ!</h1>
         <div></div>
       </header>
 
       <div className="flex-1 flex flex-col items-center justify-center p-4">
-        <div className="bg-white rounded-2xl p-8 text-center max-w-md w-full">
-          <div className="w-20 h-20 bg-gradient-to-r from-green-400 to-teal-400 rounded-2xl mx-auto mb-6 flex items-center justify-center text-3xl">
+        <div className="bg-zinc-900 rounded-2xl p-8 text-center max-w-md w-full border border-zinc-800">
+          <div className="w-20 h-20 bg-white rounded-2xl mx-auto mb-6 flex items-center justify-center text-3xl dice-shadow">
             🎯
           </div>
           
-          <h2 className="text-2xl font-bold text-gray-800 mb-4">
-            Zar Konuştu!
+          <h2 className="text-2xl font-bold text-white mb-6">
+            ZAR KONUŞTU!
           </h2>
           
-          <div className="bg-gray-50 rounded-xl p-4 mb-6">
-            <div className="text-sm text-gray-600 mb-2">Senin kararın:</div>
-            <div className="text-lg font-semibold text-gray-800 mb-4">
+          <div className="bg-zinc-800 rounded-xl p-4 mb-6 border border-zinc-700">
+            <div className="text-sm text-zinc-400 mb-2">Senin kararın:</div>
+            <div className="text-lg font-medium text-white mb-4">
               "{decisionText}"
             </div>
             
-            <div className="flex items-center justify-center space-x-3 bg-gradient-to-r from-green-100 to-teal-100 rounded-xl p-4">
-              <div className="w-12 h-12 bg-gradient-to-r from-green-400 to-teal-400 text-white rounded-xl flex items-center justify-center font-bold text-xl">
-                {diceResult}
+            <div className="flex items-center justify-center space-x-4 bg-zinc-700 rounded-xl p-4 border border-zinc-600">
+              <div className="w-16 h-16 bg-white text-black rounded-xl flex items-center justify-center font-bold text-xl dice-shadow">
+                <div className="flex flex-wrap w-10 h-10 items-center justify-center">
+                  {Array.from({length: diceResult}, (_, i) => (
+                    <div key={i} className="w-2 h-2 bg-black rounded-full m-0.5"></div>
+                  ))}
+                </div>
               </div>
-              <div className="text-lg font-semibold text-gray-800">
+              <div className="text-lg font-bold text-white flex-1">
                 {selectedOption}
               </div>
             </div>
           </div>
 
-          {implemented === null && (
+          {implemented === null && !loading && (
             <div>
-              <p className="text-gray-600 mb-6">
+              <p className="text-zinc-300 mb-6 font-medium">
                 Bu kararı uyguladın mı?
               </p>
               
               <div className="flex space-x-4">
                 <button
                   onClick={() => handleImplemented(true)}
-                  className="flex-1 bg-green-500 text-white py-3 rounded-xl font-semibold hover:bg-green-600 transition-colors"
+                  className="flex-1 bg-white text-black py-3 rounded-xl font-bold hover:bg-zinc-200 transition-colors"
                 >
-                  ✅ Evet, uyguladım!
+                  ✅ Evet!
                 </button>
                 
                 <button
                   onClick={() => handleImplemented(false)}
-                  className="flex-1 bg-gray-400 text-white py-3 rounded-xl font-semibold hover:bg-gray-500 transition-colors"
+                  className="flex-1 bg-zinc-700 text-white py-3 rounded-xl font-bold hover:bg-zinc-600 transition-colors border border-zinc-600"
                 >
-                  ❌ Hayır, uygulamadım
+                  ❌ Hayır
                 </button>
               </div>
             </div>
           )}
 
+          {loading && (
+            <div className="text-zinc-400 font-medium animate-pulse">
+              Kaydediliyor...
+            </div>
+          )}
+
           {implemented === true && (
-            <div className="text-green-600 font-semibold animate-fadeIn">
+            <div className="text-white font-bold animate-fadeIn">
               🎉 Harika! Cesaretin için tebrikler!
             </div>
           )}
 
           {implemented === false && (
-            <div className="text-gray-600 font-semibold animate-fadeIn">
+            <div className="text-zinc-400 font-bold animate-fadeIn">
               😊 Sorun değil, bir dahaki sefere!
             </div>
           )}
@@ -411,56 +760,102 @@ const ResultPage = () => {
 // Geçmiş Sayfası
 const HistoryPage = () => {
   const navigate = useNavigate();
+  const [decisions, setDecisions] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchHistory = async () => {
+      try {
+        const data = await apiCall(`${API}/decisions/history`);
+        setDecisions(data);
+      } catch (error) {
+        console.error('Failed to fetch history:', error);
+      }
+      setLoading(false);
+    };
+    fetchHistory();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="dice-loader">
+          <div className="dice-face">🎲</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-black">
+      <header className="bg-zinc-900 border-b border-zinc-800">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="text-2xl">←</button>
-          <h1 className="text-xl font-semibold">Karar Geçmişi</h1>
+          <button onClick={() => navigate(-1)} className="text-2xl text-white hover:text-zinc-400">←</button>
+          <h1 className="text-xl font-bold text-white">KARAR GEÇMİŞİ</h1>
           <div></div>
         </div>
       </header>
 
       <div className="max-w-lg mx-auto p-4">
         <div className="space-y-4">
-          {mockDecisions.map((decision) => (
-            <div key={decision.id} className="bg-white rounded-xl p-4 shadow-sm">
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1">
-                  <p className="text-gray-800 font-medium mb-2">{decision.text}</p>
+          {decisions.length === 0 ? (
+            <div className="text-center py-16">
+              <div className="text-4xl mb-4">🎲</div>
+              <h3 className="text-xl font-bold text-white mb-2">Henüz karar vermedin</h3>
+              <p className="text-zinc-400">İlk kararını vermek için ana sayfaya git</p>
+              <button 
+                onClick={() => navigate('/home')}
+                className="mt-4 bg-white text-black px-6 py-2 rounded-xl font-bold hover:bg-zinc-200 transition-colors"
+              >
+                KARAR VER
+              </button>
+            </div>
+          ) : (
+            decisions.map((decision) => (
+              <div key={decision._id} className="bg-zinc-900 rounded-xl p-4 border border-zinc-800">
+                <div className="flex items-start justify-between mb-3">
+                  <div className="flex-1">
+                    <p className="text-white font-medium mb-2">{decision.text}</p>
+                    <div className="flex items-center space-x-2">
+                      <span className="text-sm text-zinc-400">{decision.created_at}</span>
+                      {decision.is_public ? (
+                        <span className="text-xs bg-zinc-700 text-zinc-300 px-2 py-1 rounded-full border border-zinc-600">Herkese Açık</span>
+                      ) : (
+                        <span className="text-xs bg-zinc-800 text-zinc-400 px-2 py-1 rounded-full border border-zinc-700">Gizli</span>
+                      )}
+                    </div>
+                  </div>
+                </div>
+                
+                {decision.selected_option && (
+                  <div className="bg-zinc-800 rounded-lg p-3 mb-3 border border-zinc-700">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <div className="w-8 h-8 bg-white text-black rounded text-sm flex items-center justify-center font-bold dice-shadow">
+                        <div className="flex flex-wrap w-5 h-5 items-center justify-center">
+                          {Array.from({length: decision.dice_result}, (_, i) => (
+                            <div key={i} className="w-1 h-1 bg-black rounded-full m-0.2"></div>
+                          ))}
+                        </div>
+                      </div>
+                      <span className="font-bold text-white">{decision.selected_option}</span>
+                    </div>
+                  </div>
+                )}
+                
+                <div className="flex items-center justify-between">
                   <div className="flex items-center space-x-2">
-                    <span className="text-sm text-gray-500">{decision.createdAt}</span>
-                    {decision.isPublic ? (
-                      <span className="text-xs bg-blue-100 text-blue-600 px-2 py-1 rounded-full">Herkese Açık</span>
+                    {decision.implemented === true ? (
+                      <span className="text-white text-sm font-medium">✅ Uygulandı</span>
+                    ) : decision.implemented === false ? (
+                      <span className="text-zinc-400 text-sm font-medium">❌ Uygulanmadı</span>
                     ) : (
-                      <span className="text-xs bg-gray-100 text-gray-600 px-2 py-1 rounded-full">Gizli</span>
+                      <span className="text-zinc-500 text-sm font-medium">⏳ Beklemede</span>
                     )}
                   </div>
                 </div>
               </div>
-              
-              <div className="bg-gray-50 rounded-lg p-3 mb-3">
-                <div className="flex items-center space-x-2 mb-2">
-                  <div className="w-6 h-6 bg-gradient-to-r from-purple-400 to-blue-400 text-white rounded text-sm flex items-center justify-center font-bold">
-                    {decision.diceResult}
-                  </div>
-                  <span className="font-semibold text-gray-800">{decision.selectedOption}</span>
-                </div>
-              </div>
-              
-              <div className="flex items-center justify-between">
-                <div className="flex items-center space-x-2">
-                  {decision.implemented ? (
-                    <span className="text-green-600 text-sm font-medium">✅ Uygulandı</span>
-                  ) : (
-                    <span className="text-gray-500 text-sm font-medium">❌ Uygulanmadı</span>
-                  )}
-                </div>
-                <button className="text-gray-400 text-sm">•••</button>
-              </div>
-            </div>
-          ))}
+            ))
+          )}
         </div>
       </div>
 
@@ -469,465 +864,101 @@ const HistoryPage = () => {
   );
 };
 
-// Profil Sayfası
+// Profil Sayfası - Basitleştirilmiş
 const ProfilePage = () => {
   const navigate = useNavigate();
+  const { user, logout } = useAuth();
 
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="text-2xl">←</button>
-          <h1 className="text-xl font-semibold">Profil</h1>
-          <button onClick={() => navigate('/settings')} className="text-2xl">⚙️</button>
-        </div>
-      </header>
-
-      <div className="max-w-lg mx-auto p-4">
-        {/* Profil Bilgileri */}
-        <div className="bg-white rounded-2xl p-6 shadow-sm mb-6">
-          <div className="text-center mb-6">
-            <div className="w-24 h-24 mx-auto mb-4 rounded-full overflow-hidden">
-              <img src={mockUser.avatar} alt="Profile" className="w-full h-full object-cover" />
-            </div>
-            <h2 className="text-xl font-bold text-gray-800">{mockUser.name}</h2>
-            <p className="text-gray-600">{mockUser.username}</p>
-          </div>
-
-          {/* İstatistikler */}
-          <div className="grid grid-cols-2 gap-4 mb-6">
-            <div className="text-center p-4 bg-purple-50 rounded-xl">
-              <div className="text-2xl font-bold text-purple-600">{mockUser.stats.totalDecisions}</div>
-              <div className="text-sm text-gray-600">Toplam Karar</div>
-            </div>
-            <div className="text-center p-4 bg-green-50 rounded-xl">
-              <div className="text-2xl font-bold text-green-600">{mockUser.stats.successRate}%</div>
-              <div className="text-sm text-gray-600">Başarı Oranı</div>
-            </div>
-            <div className="text-center p-4 bg-blue-50 rounded-xl">
-              <div className="text-2xl font-bold text-blue-600">{mockUser.stats.followers}</div>
-              <div className="text-sm text-gray-600">Takipçi</div>
-            </div>
-            <div className="text-center p-4 bg-orange-50 rounded-xl">
-              <div className="text-2xl font-bold text-orange-600">{mockUser.stats.following}</div>
-              <div className="text-sm text-gray-600">Takip</div>
-            </div>
-          </div>
-
-          {/* Butonlar */}
-          <div className="space-y-3">
-            <button 
-              onClick={() => navigate('/followers')}
-              className="w-full bg-gray-100 text-gray-800 py-3 rounded-xl font-semibold hover:bg-gray-200 transition-colors"
-            >
-              Takipçiler & Takip Edilenler
-            </button>
-          </div>
-        </div>
-
-        {/* Menü Seçenekleri */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <button 
-            onClick={() => navigate('/history')}
-            className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between border-b border-gray-100"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl">📈</span>
-              <span className="font-medium">Karar Geçmişim</span>
-            </div>
-            <span className="text-gray-400">→</span>
-          </button>
-          
-          <button 
-            onClick={() => navigate('/notifications')}
-            className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between border-b border-gray-100"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl">🔔</span>
-              <span className="font-medium">Bildirimler</span>
-            </div>
-            <span className="text-gray-400">→</span>
-          </button>
-          
-          <button 
-            onClick={() => navigate('/settings')}
-            className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between"
-          >
-            <div className="flex items-center space-x-3">
-              <span className="text-xl">⚙️</span>
-              <span className="font-medium">Ayarlar</span>
-            </div>
-            <span className="text-gray-400">→</span>
-          </button>
-        </div>
-      </div>
-
-      <BottomNavigation />
-    </div>
-  );
-};
-
-// Mesajlaşma Sayfası
-const MessagesPage = () => {
-  const navigate = useNavigate();
-  const mockMessages = [
-    {
-      id: 1,
-      user: { name: "Ayşe Kaya", avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b098?w=150&h=150&fit=crop&crop=face" },
-      lastMessage: "Harika karar! Ben de aynısını yapacağım 😊",
-      time: "10:30",
-      unread: 2
-    },
-    {
-      id: 2,
-      user: { name: "Mehmet Demir", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face" },
-      lastMessage: "O kararı nasıl verdin? Bana da önerebilir misin?",
-      time: "09:15",
-      unread: 0
-    }
-  ];
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="text-2xl">←</button>
-          <h1 className="text-xl font-semibold">Mesajlar</h1>
-          <button className="text-2xl">✏️</button>
-        </div>
-      </header>
-
-      <div className="max-w-lg mx-auto p-4">
-        <div className="space-y-2">
-          {mockMessages.map((message) => (
-            <button
-              key={message.id}
-              onClick={() => navigate(`/chat/${message.id}`)}
-              className="w-full bg-white rounded-xl p-4 shadow-sm hover:shadow-md transition-shadow text-left"
-            >
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-full overflow-hidden flex-shrink-0">
-                  <img src={message.user.avatar} alt={message.user.name} className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center justify-between mb-1">
-                    <h3 className="font-semibold text-gray-800 truncate">{message.user.name}</h3>
-                    <span className="text-sm text-gray-500">{message.time}</span>
-                  </div>
-                  <div className="flex items-center justify-between">
-                    <p className="text-gray-600 text-sm truncate flex-1">{message.lastMessage}</p>
-                    {message.unread > 0 && (
-                      <span className="bg-purple-500 text-white text-xs rounded-full w-5 h-5 flex items-center justify-center ml-2">
-                        {message.unread}
-                      </span>
-                    )}
-                  </div>
-                </div>
-              </div>
-            </button>
-          ))}
-        </div>
-      </div>
-
-      <BottomNavigation />
-    </div>
-  );
-};
-
-// Chat Detay Sayfası
-const ChatPage = () => {
-  const navigate = useNavigate();
-  const [message, setMessage] = useState("");
-  
-  const mockChatMessages = [
-    { id: 1, text: "Merhaba! Bugünkü kararın nasıldı?", sender: "other", time: "10:25" },
-    { id: 2, text: "Çok iyiydi! Zar dağa çıkmamı söyledi ve gerçekten güzel bir gün geçirdim.", sender: "me", time: "10:27" },
-    { id: 3, text: "Harika karar! Ben de aynısını yapacağım 😊", sender: "other", time: "10:30" }
-  ];
-
-  return (
-    <div className="min-h-screen bg-gray-50 flex flex-col">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center space-x-3">
-          <button onClick={() => navigate(-1)} className="text-2xl">←</button>
-          <div className="w-10 h-10 rounded-full overflow-hidden">
-            <img src="https://images.unsplash.com/photo-1494790108755-2616b612b098?w=150&h=150&fit=crop&crop=face" alt="User" className="w-full h-full object-cover" />
-          </div>
-          <div className="flex-1">
-            <h1 className="font-semibold">Ayşe Kaya</h1>
-            <p className="text-sm text-gray-500">Çevrimiçi</p>
-          </div>
-        </div>
-      </header>
-
-      <div className="flex-1 overflow-y-auto p-4 space-y-4">
-        {mockChatMessages.map((msg) => (
-          <div key={msg.id} className={`flex ${msg.sender === 'me' ? 'justify-end' : 'justify-start'}`}>
-            <div className={`max-w-xs lg:max-w-md px-4 py-2 rounded-2xl ${
-              msg.sender === 'me' 
-                ? 'bg-purple-500 text-white' 
-                : 'bg-white text-gray-800 shadow-sm'
-            }`}>
-              <p className="text-sm">{msg.text}</p>
-              <p className={`text-xs mt-1 ${msg.sender === 'me' ? 'text-purple-100' : 'text-gray-500'}`}>
-                {msg.time}
-              </p>
-            </div>
-          </div>
-        ))}
-      </div>
-
-      <div className="bg-white border-t p-4">
-        <div className="max-w-lg mx-auto flex space-x-3">
-          <input
-            type="text"
-            value={message}
-            onChange={(e) => setMessage(e.target.value)}
-            placeholder="Mesajını yaz..."
-            className="flex-1 border border-gray-200 rounded-full px-4 py-2 focus:outline-none focus:border-purple-400"
-          />
-          <button 
-            disabled={!message.trim()}
-            className="bg-purple-500 text-white rounded-full w-10 h-10 flex items-center justify-center disabled:opacity-50"
-          >
-            ➤
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
-// Bildirimler Sayfası
-const NotificationsPage = () => {
-  const navigate = useNavigate();
-  
-  const mockNotifications = [
-    {
-      id: 1,
-      type: "follow",
-      user: "Ahmet Yılmaz",
-      text: "seni takip etmeye başladı",
-      time: "2 saat önce",
-      unread: true
-    },
-    {
-      id: 2,
-      type: "like",
-      user: "Ayşe Kaya",
-      text: "kararını beğendi",
-      time: "5 saat önce",
-      unread: true
-    },
-    {
-      id: 3,
-      type: "message",
-      user: "Mehmet Demir",
-      text: "sana mesaj gönderdi",
-      time: "1 gün önce",
-      unread: false
-    }
-  ];
-
-  const getNotificationIcon = (type) => {
-    switch (type) {
-      case 'follow': return '👤';
-      case 'like': return '❤️';
-      case 'message': return '💬';
-      default: return '🔔';
-    }
+  const handleLogout = () => {
+    logout();
+    navigate('/');
   };
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
+    <div className="min-h-screen bg-black">
+      <header className="bg-zinc-900 border-b border-zinc-800">
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="text-2xl">←</button>
-          <h1 className="text-xl font-semibold">Bildirimler</h1>
-          <button className="text-sm text-purple-600">Tümünü Okundu İşaretle</button>
-        </div>
-      </header>
-
-      <div className="max-w-lg mx-auto p-4">
-        <div className="space-y-2">
-          {mockNotifications.map((notification) => (
-            <div
-              key={notification.id}
-              className={`bg-white rounded-xl p-4 shadow-sm ${notification.unread ? 'border-l-4 border-purple-500' : ''}`}
-            >
-              <div className="flex items-start space-x-3">
-                <div className="text-2xl">{getNotificationIcon(notification.type)}</div>
-                <div className="flex-1">
-                  <p className="text-gray-800">
-                    <span className="font-semibold">{notification.user}</span> {notification.text}
-                  </p>
-                  <p className="text-sm text-gray-500 mt-1">{notification.time}</p>
-                </div>
-                {notification.unread && (
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                )}
-              </div>
-            </div>
-          ))}
-        </div>
-      </div>
-
-      <BottomNavigation />
-    </div>
-  );
-};
-
-// Takipçiler Sayfası
-const FollowersPage = () => {
-  const navigate = useNavigate();
-  const [activeTab, setActiveTab] = useState('followers');
-  
-  const mockFollowers = [
-    { id: 1, name: "Ayşe Kaya", username: "@aysekaya", avatar: "https://images.unsplash.com/photo-1494790108755-2616b612b098?w=150&h=150&fit=crop&crop=face", following: true },
-    { id: 2, name: "Mehmet Demir", username: "@mehmetdemir", avatar: "https://images.unsplash.com/photo-1472099645785-5658abf4ff4e?w=150&h=150&fit=crop&crop=face", following: false }
-  ];
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="text-2xl">←</button>
-          <h1 className="text-xl font-semibold">Takip</h1>
+          <button onClick={() => navigate(-1)} className="text-2xl text-white hover:text-zinc-400">←</button>
+          <h1 className="text-xl font-bold text-white">PROFİL</h1>
           <div></div>
         </div>
       </header>
 
-      {/* Tab Menü */}
-      <div className="bg-white border-b">
-        <div className="max-w-lg mx-auto px-4">
-          <div className="flex">
-            <button
-              onClick={() => setActiveTab('followers')}
-              className={`flex-1 py-4 text-center font-semibold ${
-                activeTab === 'followers' 
-                  ? 'text-purple-600 border-b-2 border-purple-600' 
-                  : 'text-gray-500'
-              }`}
-            >
-              Takipçiler ({mockUser.stats.followers})
-            </button>
-            <button
-              onClick={() => setActiveTab('following')}
-              className={`flex-1 py-4 text-center font-semibold ${
-                activeTab === 'following' 
-                  ? 'text-purple-600 border-b-2 border-purple-600' 
-                  : 'text-gray-500'
-              }`}
-            >
-              Takip Edilenler ({mockUser.stats.following})
-            </button>
+      <div className="max-w-lg mx-auto p-4">
+        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 mb-6">
+          <div className="text-center mb-6">
+            <div className="w-24 h-24 mx-auto mb-4 rounded-xl overflow-hidden border-2 border-zinc-700">
+              <img src={user?.avatar} alt="Profile" className="w-full h-full object-cover" />
+            </div>
+            <h2 className="text-xl font-bold text-white">{user?.name}</h2>
+            <p className="text-zinc-400">@{user?.username}</p>
+          </div>
+
+          <div className="grid grid-cols-2 gap-4 mb-6">
+            <div className="text-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+              <div className="text-2xl font-bold text-white">{user?.stats?.total_decisions || 0}</div>
+              <div className="text-sm text-zinc-400">Toplam Karar</div>
+            </div>
+            <div className="text-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+              <div className="text-2xl font-bold text-white">{user?.stats?.success_rate || 0}%</div>
+              <div className="text-sm text-zinc-400">Başarı Oranı</div>
+            </div>
           </div>
         </div>
-      </div>
 
-      <div className="max-w-lg mx-auto p-4">
-        <div className="space-y-2">
-          {mockFollowers.map((user) => (
-            <div key={user.id} className="bg-white rounded-xl p-4 shadow-sm">
-              <div className="flex items-center space-x-3">
-                <div className="w-12 h-12 rounded-full overflow-hidden">
-                  <img src={user.avatar} alt={user.name} className="w-full h-full object-cover" />
-                </div>
-                <div className="flex-1">
-                  <h3 className="font-semibold text-gray-800">{user.name}</h3>
-                  <p className="text-gray-600 text-sm">{user.username}</p>
-                </div>
-                <button
-                  className={`px-4 py-2 rounded-lg font-semibold text-sm ${
-                    user.following
-                      ? 'bg-gray-200 text-gray-800 hover:bg-gray-300'
-                      : 'bg-purple-500 text-white hover:bg-purple-600'
-                  }`}
-                >
-                  {user.following ? 'Takip Ediliyor' : 'Takip Et'}
-                </button>
-              </div>
+        <div className="bg-zinc-900 rounded-2xl border border-zinc-800 overflow-hidden">
+          <button 
+            onClick={() => navigate('/history')}
+            className="w-full p-4 text-left hover:bg-zinc-800 transition-colors flex items-center justify-between border-b border-zinc-800"
+          >
+            <div className="flex items-center space-x-3">
+              <span className="text-xl">📈</span>
+              <span className="font-medium text-white">Karar Geçmişim</span>
             </div>
-          ))}
-        </div>
-      </div>
-
-      <BottomNavigation />
-    </div>
-  );
-};
-
-// Ayarlar Sayfası
-const SettingsPage = () => {
-  const navigate = useNavigate();
-
-  return (
-    <div className="min-h-screen bg-gray-50">
-      <header className="bg-white shadow-sm border-b">
-        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
-          <button onClick={() => navigate(-1)} className="text-2xl">←</button>
-          <h1 className="text-xl font-semibold">Ayarlar</h1>
-          <div></div>
-        </div>
-      </header>
-
-      <div className="max-w-lg mx-auto p-4 space-y-6">
-        {/* Hesap Ayarları */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <h2 className="p-4 font-semibold text-gray-800 border-b border-gray-100">Hesap</h2>
-          <button className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between border-b border-gray-100">
-            <span>Profil Düzenle</span>
-            <span className="text-gray-400">→</span>
+            <span className="text-zinc-400">→</span>
           </button>
-          <button className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between">
-            <span>Şifre Değiştir</span>
-            <span className="text-gray-400">→</span>
-          </button>
-        </div>
-
-        {/* Gizlilik Ayarları */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <h2 className="p-4 font-semibold text-gray-800 border-b border-gray-100">Gizlilik</h2>
-          <button className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between border-b border-gray-100">
-            <span>Karar Gizliliği</span>
-            <span className="text-gray-400">→</span>
-          </button>
-          <button className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between">
-            <span>Profil Gizliliği</span>
-            <span className="text-gray-400">→</span>
-          </button>
-        </div>
-
-        {/* Bildirim Ayarları */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <h2 className="p-4 font-semibold text-gray-800 border-b border-gray-100">Bildirimler</h2>
-          <button className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between border-b border-gray-100">
-            <span>Push Bildirimleri</span>
-            <span className="text-gray-400">→</span>
-          </button>
-          <button className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between">
-            <span>Email Bildirimleri</span>
-            <span className="text-gray-400">→</span>
-          </button>
-        </div>
-
-        {/* Diğer */}
-        <div className="bg-white rounded-2xl shadow-sm overflow-hidden">
-          <h2 className="p-4 font-semibold text-gray-800 border-b border-gray-100">Diğer</h2>
-          <button className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between border-b border-gray-100">
-            <span>Hakkında</span>
-            <span className="text-gray-400">→</span>
-          </button>
-          <button className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between border-b border-gray-100">
-            <span>Destek</span>
-            <span className="text-gray-400">→</span>
-          </button>
-          <button className="w-full p-4 text-left hover:bg-gray-50 transition-colors flex items-center justify-between text-red-600">
-            <span>Çıkış Yap</span>
+          
+          <button 
+            onClick={handleLogout}
+            className="w-full p-4 text-left hover:bg-zinc-800 transition-colors flex items-center justify-between text-red-400"
+          >
+            <div className="flex items-center space-x-3">
+              <span className="text-xl">🚪</span>
+              <span className="font-medium">Çıkış Yap</span>
+            </div>
             <span className="text-red-400">→</span>
           </button>
         </div>
       </div>
+
+      <BottomNavigation />
+    </div>
+  );
+};
+
+// Basit Mesajlar sayfası (placeholder)
+const MessagesPage = () => {
+  const navigate = useNavigate();
+
+  return (
+    <div className="min-h-screen bg-black">
+      <header className="bg-zinc-900 border-b border-zinc-800">
+        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+          <button onClick={() => navigate(-1)} className="text-2xl text-white hover:text-zinc-400">←</button>
+          <h1 className="text-xl font-bold text-white">MESAJLAR</h1>
+          <div></div>
+        </div>
+      </header>
+
+      <div className="max-w-lg mx-auto p-4">
+        <div className="text-center py-16">
+          <div className="text-4xl mb-4">💬</div>
+          <h3 className="text-xl font-bold text-white mb-2">Mesajlaşma yakında!</h3>
+          <p className="text-zinc-400">Bu özellik üzerinde çalışıyoruz</p>
+        </div>
+      </div>
+
+      <BottomNavigation />
     </div>
   );
 };
@@ -945,16 +976,16 @@ const BottomNavigation = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-white border-t border-gray-200 max-w-lg mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 max-w-lg mx-auto">
       <div className="flex">
         {navItems.map((item) => (
           <button
             key={item.path}
             onClick={() => navigate(item.path)}
-            className={`flex-1 py-3 px-2 text-center ${
+            className={`flex-1 py-3 px-2 text-center transition-colors ${
               location.pathname === item.path
-                ? 'text-purple-600'
-                : 'text-gray-500'
+                ? 'text-white bg-zinc-800'
+                : 'text-zinc-400 hover:text-white'
             }`}
           >
             <div className="text-xl mb-1">{item.icon}</div>
@@ -969,23 +1000,23 @@ const BottomNavigation = () => {
 // Ana App Bileşeni
 function App() {
   return (
-    <div className="App">
-      <BrowserRouter>
-        <Routes>
-          <Route path="/" element={<OnboardingPage />} />
-          <Route path="/home" element={<HomePage />} />
-          <Route path="/dice" element={<DicePage />} />
-          <Route path="/result" element={<ResultPage />} />
-          <Route path="/history" element={<HistoryPage />} />
-          <Route path="/profile" element={<ProfilePage />} />
-          <Route path="/messages" element={<MessagesPage />} />
-          <Route path="/chat/:id" element={<ChatPage />} />
-          <Route path="/notifications" element={<NotificationsPage />} />
-          <Route path="/followers" element={<FollowersPage />} />
-          <Route path="/settings" element={<SettingsPage />} />
-        </Routes>
-      </BrowserRouter>
-    </div>
+    <AuthProvider>
+      <div className="App">
+        <BrowserRouter>
+          <Routes>
+            <Route path="/" element={<OnboardingPage />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/home" element={<ProtectedRoute><HomePage /></ProtectedRoute>} />
+            <Route path="/dice" element={<ProtectedRoute><DicePage /></ProtectedRoute>} />
+            <Route path="/result" element={<ProtectedRoute><ResultPage /></ProtectedRoute>} />
+            <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
+            <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
+          </Routes>
+        </BrowserRouter>
+      </div>
+    </AuthProvider>
   );
 }
 
