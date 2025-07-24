@@ -1724,6 +1724,106 @@ const ProfilePage = () => {
 
 const MessagesPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const [conversations, setConversations] = useState([]);
+  const [selectedConversation, setSelectedConversation] = useState(null);
+  const [messages, setMessages] = useState([]);
+  const [newMessage, setNewMessage] = useState("");
+  const [loading, setLoading] = useState(true);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [searchResults, setSearchResults] = useState([]);
+  const [showUserSearch, setShowUserSearch] = useState(false);
+
+  useEffect(() => {
+    fetchConversations();
+  }, []);
+
+  const fetchConversations = async () => {
+    try {
+      const data = await apiCall(`${API}/messages/conversations`);
+      setConversations(data);
+    } catch (error) {
+      console.error('Failed to fetch conversations:', error);
+    }
+    setLoading(false);
+  };
+
+  const fetchConversationMessages = async (partnerId) => {
+    try {
+      const data = await apiCall(`${API}/messages/conversation/${partnerId}`);
+      setMessages(data);
+    } catch (error) {
+      console.error('Failed to fetch messages:', error);
+    }
+  };
+
+  const handleConversationSelect = async (conversation) => {
+    setSelectedConversation(conversation);
+    await fetchConversationMessages(conversation.partner.id);
+  };
+
+  const handleSendMessage = async () => {
+    if (!newMessage.trim() || !selectedConversation) return;
+
+    try {
+      await apiCall(`${API}/messages/send`, {
+        method: 'POST',
+        data: {
+          recipient_id: selectedConversation.partner.id,
+          content: newMessage
+        }
+      });
+
+      setNewMessage("");
+      // Refresh messages
+      await fetchConversationMessages(selectedConversation.partner.id);
+      // Refresh conversations to update last message
+      await fetchConversations();
+    } catch (error) {
+      console.error('Failed to send message:', error);
+      alert('Mesaj gönderilemedi: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const searchUsers = async (query) => {
+    if (query.length < 2) {
+      setSearchResults([]);
+      return;
+    }
+
+    try {
+      const data = await apiCall(`${API}/users/search?q=${encodeURIComponent(query)}`);
+      setSearchResults(data);
+    } catch (error) {
+      console.error('Failed to search users:', error);
+    }
+  };
+
+  const handleFollowUser = async (userId) => {
+    try {
+      await apiCall(`${API}/users/follow`, {
+        method: 'POST',
+        data: { target_user_id: userId }
+      });
+      
+      // Refresh search results
+      await searchUsers(searchQuery);
+      alert('Kullanıcı takip edildi! Karşılıklı takip olduktan sonra mesajlaşabilirsiniz.');
+    } catch (error) {
+      console.error('Failed to follow user:', error);
+      alert('Takip edilemedi: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="dice-loader">
+          <div className="dice-face">🎲</div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black">
@@ -1731,19 +1831,177 @@ const MessagesPage = () => {
         <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
           <button onClick={() => navigate(-1)} className="text-2xl text-white hover:text-zinc-400">←</button>
           <h1 className="text-xl font-bold text-white">MESAJLAR</h1>
-          <div></div>
+          <button 
+            onClick={() => setShowUserSearch(!showUserSearch)}
+            className="text-xl text-white hover:text-zinc-400"
+          >
+            {showUserSearch ? '✕' : '👥'}
+          </button>
         </div>
       </header>
 
-      <div className="max-w-lg mx-auto p-4">
-        <div className="text-center py-16">
-          <div className="text-4xl mb-4">💬</div>
-          <h3 className="text-xl font-bold text-white mb-2">Mesajlaşma yakında!</h3>
-          <p className="text-zinc-400">Bu özellik üzerinde çalışıyoruz</p>
-        </div>
+      <div className="max-w-lg mx-auto">
+        {showUserSearch && (
+          <div className="p-4 border-b border-zinc-800 bg-zinc-900">
+            <input
+              type="text"
+              placeholder="Kullanıcı ara..."
+              value={searchQuery}
+              onChange={(e) => {
+                setSearchQuery(e.target.value);
+                searchUsers(e.target.value);
+              }}
+              className="w-full p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+            />
+            
+            {searchResults.length > 0 && (
+              <div className="mt-3 space-y-2">
+                {searchResults.map(user => (
+                  <div key={user._id} className="flex items-center justify-between p-3 bg-zinc-800 rounded-xl">
+                    <div className="flex items-center space-x-3">
+                      <img 
+                        src={user.avatar} 
+                        alt={user.name}
+                        className="w-10 h-10 rounded-xl object-cover"
+                      />
+                      <div>
+                        <div className="text-white font-semibold">{user.name}</div>
+                        <div className="text-zinc-400 text-sm">@{user.username}</div>
+                      </div>
+                    </div>
+                    
+                    {!user.is_following && (
+                      <button
+                        onClick={() => handleFollowUser(user._id)}
+                        className="bg-blue-900 text-white px-3 py-1 rounded-lg text-sm hover:bg-blue-800 transition-colors border border-blue-700"
+                      >
+                        Takip Et
+                      </button>
+                    )}
+                    
+                    {user.is_following && (
+                      <span className="text-green-400 text-sm">✓ Takip Ediliyor</span>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {!selectedConversation ? (
+          <div className="p-4">
+            {conversations.length === 0 ? (
+              <div className="text-center py-16">
+                <div className="text-4xl mb-4">💬</div>
+                <h3 className="text-xl font-bold text-white mb-2">Henüz mesajınız yok</h3>
+                <p className="text-zinc-400 mb-4">Kullanıcı arayarak mesajlaşmaya başlayın</p>
+                <button
+                  onClick={() => setShowUserSearch(true)}
+                  className="bg-white text-black px-6 py-2 rounded-xl font-bold hover:bg-zinc-200 transition-colors"
+                >
+                  Kullanıcı Ara
+                </button>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {conversations.map((conversation, index) => (
+                  <div
+                    key={index}
+                    onClick={() => handleConversationSelect(conversation)}
+                    className="flex items-center space-x-3 p-4 bg-zinc-900 rounded-xl border border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors"
+                  >
+                    <img 
+                      src={conversation.partner.avatar} 
+                      alt={conversation.partner.name}
+                      className="w-12 h-12 rounded-xl object-cover"
+                    />
+                    <div className="flex-1">
+                      <div className="flex items-center justify-between mb-1">
+                        <h3 className="font-semibold text-white">{conversation.partner.name}</h3>
+                        <span className="text-sm text-zinc-400">{conversation.last_message.created_at}</span>
+                      </div>
+                      <p className="text-zinc-400 text-sm truncate">{conversation.last_message.content}</p>
+                    </div>
+                    {conversation.unread_count > 0 && (
+                      <div className="w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                        {conversation.unread_count}
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex flex-col h-screen">
+            {/* Conversation Header */}
+            <div className="flex items-center space-x-3 p-4 border-b border-zinc-800 bg-zinc-900">
+              <button
+                onClick={() => setSelectedConversation(null)}
+                className="text-xl text-white hover:text-zinc-400"
+              >
+                ←
+              </button>
+              <img 
+                src={selectedConversation.partner.avatar} 
+                alt={selectedConversation.partner.name}
+                className="w-10 h-10 rounded-xl object-cover"
+              />
+              <div>
+                <h3 className="font-semibold text-white">{selectedConversation.partner.name}</h3>
+                <p className="text-zinc-400 text-sm">@{selectedConversation.partner.username}</p>
+              </div>
+            </div>
+
+            {/* Messages */}
+            <div className="flex-1 overflow-y-auto p-4 space-y-3" style={{ height: 'calc(100vh - 200px)' }}>
+              {messages.map((message, index) => (
+                <div
+                  key={index}
+                  className={`flex ${message.is_own ? 'justify-end' : 'justify-start'}`}
+                >
+                  <div
+                    className={`max-w-xs px-4 py-2 rounded-xl ${
+                      message.is_own
+                        ? 'bg-blue-600 text-white'
+                        : 'bg-zinc-800 text-white border border-zinc-700'
+                    }`}
+                  >
+                    <p>{message.content}</p>
+                    <p className={`text-xs mt-1 ${message.is_own ? 'text-blue-200' : 'text-zinc-400'}`}>
+                      {message.created_at}
+                    </p>
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            {/* Message Input */}
+            <div className="p-4 border-t border-zinc-800 bg-zinc-900">
+              <div className="flex space-x-3">
+                <input
+                  type="text"
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  onKeyPress={(e) => e.key === 'Enter' && handleSendMessage()}
+                  placeholder="Mesajınızı yazın..."
+                  className="flex-1 p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+                />
+                <button
+                  onClick={handleSendMessage}
+                  disabled={!newMessage.trim()}
+                  className="bg-blue-600 text-white px-6 py-3 rounded-xl font-bold hover:bg-blue-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+                >
+                  Gönder
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
-      <BottomNavigation />
+      {!selectedConversation && <BottomNavigation />}
     </div>
   );
 };
