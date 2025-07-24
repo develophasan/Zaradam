@@ -782,6 +782,7 @@ const AdminDashboard = () => {
   const [dashboardData, setDashboardData] = useState(null);
   const [users, setUsers] = useState([]);
   const [logs, setLogs] = useState([]);
+  const [subscriptionStats, setSubscriptionStats] = useState(null);
   const [activeTab, setActiveTab] = useState('dashboard');
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState('');
@@ -793,15 +794,17 @@ const AdminDashboard = () => {
 
   const fetchDashboardData = async () => {
     try {
-      const [dashboard, userList, logList] = await Promise.all([
+      const [dashboard, userList, logList, subStats] = await Promise.all([
         apiCall(`${API}/admin/dashboard`),
         apiCall(`${API}/admin/users?limit=100`),
-        apiCall(`${API}/admin/logs?limit=50`)
+        apiCall(`${API}/admin/logs?limit=50`),
+        apiCall(`${API}/admin/subscription-stats`)
       ]);
       
       setDashboardData(dashboard);
       setUsers(userList);
       setLogs(logList);
+      setSubscriptionStats(subStats);
     } catch (error) {
       console.error('Failed to fetch admin data:', error);
     }
