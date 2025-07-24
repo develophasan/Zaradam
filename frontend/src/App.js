@@ -249,7 +249,7 @@ const NotificationBell = ({ navigate }) => {
                 notifications.map((notification, index) => (
                   <div
                     key={index}
-                    onClick={() => !notification.read && markAsRead(notification._id)}
+                    onClick={() => handleNotificationClick(notification)}
                     className={`p-4 border-b border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors ${
                       !notification.read ? 'bg-zinc-800' : ''
                     }`}
@@ -266,6 +266,11 @@ const NotificationBell = ({ navigate }) => {
                         <p className="text-xs text-zinc-500 mt-1">
                           {notification.created_at}
                         </p>
+                        {(notification.type === 'follow' || notification.type === 'message') && (
+                          <p className="text-xs text-blue-400 mt-1">
+                            Tıklayın →
+                          </p>
+                        )}
                       </div>
                       {!notification.read && (
                         <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
