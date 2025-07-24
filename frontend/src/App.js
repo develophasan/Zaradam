@@ -1154,6 +1154,20 @@ const HomePage = () => {
   const [loading, setLoading] = useState(false);
   const [decisionId, setDecisionId] = useState(null);
   const [privacyLevel, setPrivacyLevel] = useState("public");
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+
+  useEffect(() => {
+    fetchSubscriptionStatus();
+  }, []);
+
+  const fetchSubscriptionStatus = async () => {
+    try {
+      const data = await apiCall(`${API}/subscription/status`);
+      setSubscriptionStatus(data);
+    } catch (error) {
+      console.error('Failed to fetch subscription status:', error);
+    }
+  };
 
   const handleSubmit = async () => {
     if (decisionText.trim()) {
@@ -1169,8 +1183,14 @@ const HomePage = () => {
         
         setAlternatives(response.alternatives);
         setDecisionId(response.decision_id);
+        // Refresh subscription status to update query count
+        await fetchSubscriptionStatus();
       } catch (error) {
         console.error('Decision creation failed:', error);
+        if (error.response?.status === 403) {
+          // Query limit exceeded
+          alert(error.response.data.detail);
+        }
       }
       setLoading(false);
     }
