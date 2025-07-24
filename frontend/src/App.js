@@ -902,6 +902,7 @@ const AdminDashboard = () => {
           {[
             { key: 'dashboard', label: '📊 Dashboard', },
             { key: 'users', label: '👥 Kullanıcılar' },
+            { key: 'subscriptions', label: '💳 Abonelikler' },
             { key: 'logs', label: '📋 Loglar' },
             { key: 'export', label: '📤 Export' }
           ].map((tab) => (
