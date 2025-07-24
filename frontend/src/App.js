@@ -3010,9 +3010,9 @@ const UserProfilePage = () => {
             
             <button
               onClick={handleSendMessage}
-              disabled={!isFollowing}
+              disabled={!user.can_message}
               className={`w-full py-3 rounded-xl font-bold transition-colors ${
-                isFollowing
+                user.can_message
                   ? 'bg-green-600 text-white hover:bg-green-500'
                   : 'bg-zinc-700 text-zinc-400 cursor-not-allowed'
               }`}
@@ -3020,12 +3020,29 @@ const UserProfilePage = () => {
               💬 Mesaj Gönder
             </button>
             
-            {!isFollowing && (
+            {/* Messaging Status Info */}
+            {!user.can_message && (
               <div className="bg-amber-900/20 border border-amber-700/50 p-3 rounded-xl">
                 <p className="text-center text-amber-300 text-sm">
-                  <span className="block font-medium">🔒 Mesajlaşma Kısıtlaması</span>
-                  <span className="text-xs text-amber-400">
-                    Zaradam'da güvenlik için sadece karşılıklı takip eden kullanıcılar mesajlaşabilir
+                  <span className="block font-medium">🔒 Mesajlaşma Durumu</span>
+                  <span className="text-xs text-amber-400 block mt-1">
+                    {!isFollowing 
+                      ? 'Mesaj göndermek için önce takip etmelisiniz'
+                      : !user.follows_back
+                      ? 'Bu kullanıcı sizi takip etmiyor - karşılıklı takip gerekli'
+                      : 'Mesajlaşma için karşılıklı takip gereklidir'
+                    }
+                  </span>
+                </p>
+              </div>
+            )}
+            
+            {user.can_message && (
+              <div className="bg-green-900/20 border border-green-700/50 p-3 rounded-xl">
+                <p className="text-center text-green-300 text-sm">
+                  <span className="block font-medium">✅ Mesajlaşabilirsiniz</span>
+                  <span className="text-xs text-green-400 block mt-1">
+                    Karşılıklı takip - Güvenli mesajlaşma aktif
                   </span>
                 </p>
               </div>
