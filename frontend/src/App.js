@@ -542,7 +542,7 @@ const RegisterPage = () => {
       <div className="max-w-md w-full bg-zinc-900 rounded-2xl shadow-2xl p-8 border border-zinc-800">
         <div className="text-center mb-8">
           <div className="w-16 h-16 bg-white rounded-xl mx-auto mb-4 flex items-center justify-center text-2xl dice-shadow">
-            ⚫
+            🎲
           </div>
           <h1 className="text-3xl font-bold text-white mb-2">Kayıt Ol</h1>
           <p className="text-zinc-400">Yeni hesap oluştur</p>
