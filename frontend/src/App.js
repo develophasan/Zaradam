@@ -2161,7 +2161,7 @@ const BottomNavigation = () => {
   ];
 
   return (
-    <nav className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 max-w-lg mx-auto">
+    <nav className="fixed bottom-0 left-0 right-0 bg-zinc-900 border-t border-zinc-800 max-w-lg mx-auto z-50">
       <div className="flex">
         {navItems.map((item) => (
           <button
