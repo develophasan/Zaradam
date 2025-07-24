@@ -1445,7 +1445,7 @@ const HomePage = () => {
               </button>
             )}
             
-            <NotificationBell />
+            <NotificationBell navigate={navigate} />
             <button onClick={() => navigate('/profile')} className="w-10 h-10 rounded-xl overflow-hidden border-2 border-zinc-700">
               <img src={user?.avatar} alt="Profile" className="w-full h-full object-cover" />
             </button>
