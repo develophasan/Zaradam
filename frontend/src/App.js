@@ -2146,6 +2146,282 @@ const MessagesPage = () => {
   );
 };
 
+// Subscription Page
+const SubscriptionPage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const [subscriptionStatus, setSubscriptionStatus] = useState(null);
+  const [loading, setLoading] = useState(true);
+  const [paymentLoading, setPaymentLoading] = useState(false);
+  const [cardData, setCardData] = useState({
+    cardHolderName: '',
+    cardNumber: '',
+    expireMonth: '',
+    expireYear: '',
+    cvc: ''
+  });
+
+  useEffect(() => {
+    fetchSubscriptionStatus();
+  }, []);
+
+  const fetchSubscriptionStatus = async () => {
+    try {
+      const data = await apiCall(`${API}/subscription/status`);
+      setSubscriptionStatus(data);
+    } catch (error) {
+      console.error('Failed to fetch subscription status:', error);
+    }
+    setLoading(false);
+  };
+
+  const handleSubscribe = async () => {
+    // Validate card data
+    if (!cardData.cardHolderName || !cardData.cardNumber || !cardData.expireMonth || !cardData.expireYear || !cardData.cvc) {
+      alert('Lütfen tüm kart bilgilerini eksiksiz doldurun');
+      return;
+    }
+
+    setPaymentLoading(true);
+    try {
+      const response = await apiCall(`${API}/subscription/create-payment`, {
+        method: 'POST',
+        data: {
+          card_holder_name: cardData.cardHolderName,
+          card_number: cardData.cardNumber.replace(/\s/g, ''),
+          expire_month: cardData.expireMonth,
+          expire_year: cardData.expireYear,
+          cvc: cardData.cvc
+        }
+      });
+
+      if (response.success) {
+        alert(response.message);
+        await fetchSubscriptionStatus(); // Refresh status
+        setCardData({ // Clear form
+          cardHolderName: '',
+          cardNumber: '',
+          expireMonth: '',
+          expireYear: '',
+          cvc: ''
+        });
+      }
+    } catch (error) {
+      console.error('Subscription failed:', error);
+      alert('Abonelik başarısız: ' + (error.response?.data?.detail || error.message));
+    }
+    setPaymentLoading(false);
+  };
+
+  const handleCancelSubscription = async () => {
+    if (!confirm('Aboneliğinizi iptal etmek istediğinizden emin misiniz?')) {
+      return;
+    }
+
+    try {
+      const response = await apiCall(`${API}/subscription/cancel`, {
+        method: 'POST'
+      });
+
+      if (response.success) {
+        alert(response.message);
+        await fetchSubscriptionStatus();
+      }
+    } catch (error) {
+      console.error('Cancellation failed:', error);
+      alert('İptal işlemi başarısız: ' + (error.response?.data?.detail || error.message));
+    }
+  };
+
+  const formatCardNumber = (value) => {
+    const v = value.replace(/\s+/g, '').replace(/[^0-9]/gi, '');
+    const matches = v.match(/\d{4,16}/g);
+    const match = matches && matches[0] || '';
+    const parts = [];
+    for (let i = 0; i < match.length; i += 4) {
+      parts.push(match.substring(i, i + 4));
+    }
+    if (parts.length) {
+      return parts.join(' ');
+    } else {
+      return v;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="min-h-screen bg-black flex items-center justify-center">
+        <div className="dice-loader">
+          <div className="dice-face">🎲</div>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div className="min-h-screen bg-black">
+      <header className="bg-zinc-900 border-b border-zinc-800">
+        <div className="max-w-lg mx-auto px-4 py-4 flex items-center justify-between">
+          <button onClick={() => navigate(-1)} className="text-2xl text-white hover:text-zinc-400">←</button>
+          <h1 className="text-xl font-bold text-white">PREMİUM ÜYELİK</h1>
+          <div></div>
+        </div>
+      </header>
+
+      <div className="max-w-lg mx-auto p-4 pb-24">
+        {/* Current Status */}
+        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 mb-6">
+          <h2 className="text-xl font-bold text-white mb-4">Mevcut Durumunuz</h2>
+          
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <span className="text-zinc-300">Üyelik Durumu:</span>
+              <span className={`font-bold ${subscriptionStatus?.is_premium ? 'text-green-400' : 'text-zinc-400'}`}>
+                {subscriptionStatus?.is_premium ? '✨ Premium' : '🆓 Ücretsiz'}
+              </span>
+            </div>
+            
+            {!subscriptionStatus?.is_premium && (
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-300">Günlük Sorgu:</span>
+                <span className="text-white font-bold">
+                  {subscriptionStatus?.queries_remaining || 0} / {subscriptionStatus?.daily_queries || 3}
+                </span>
+              </div>
+            )}
+            
+            {subscriptionStatus?.is_premium && subscriptionStatus?.next_payment_date && (
+              <div className="flex items-center justify-between">
+                <span className="text-zinc-300">Sonraki Ödeme:</span>
+                <span className="text-white font-bold">
+                  {new Date(subscriptionStatus.next_payment_date).toLocaleDateString('tr-TR')}
+                </span>
+              </div>
+            )}
+          </div>
+        </div>
+
+        {/* Premium Benefits */}
+        <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800 mb-6">
+          <h2 className="text-xl font-bold text-white mb-4">Premium Avantajları</h2>
+          
+          <div className="space-y-3">
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                ✓
+              </div>
+              <span className="text-white">Sınırsız AI karar alternatifleri</span>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                ✓
+              </div>
+              <span className="text-white">Premium destek</span>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                ✓
+              </div>
+              <span className="text-white">Reklamsız deneyim</span>
+            </div>
+            
+            <div className="flex items-center space-x-3">
+              <div className="w-8 h-8 bg-green-600 rounded-lg flex items-center justify-center">
+                ✓
+              </div>
+              <span className="text-white">Gelişmiş analitik</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Subscription Actions */}
+        {!subscriptionStatus?.is_premium ? (
+          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+            <h2 className="text-xl font-bold text-white mb-4">Premium'a Geçin</h2>
+            <div className="text-center mb-6">
+              <div className="text-3xl font-bold text-white">₺29.99</div>
+              <div className="text-zinc-400">/ aylık</div>
+            </div>
+            
+            <div className="space-y-4">
+              <input
+                type="text"
+                placeholder="Kart Sahibi Adı"
+                value={cardData.cardHolderName}
+                onChange={(e) => setCardData({...cardData, cardHolderName: e.target.value})}
+                className="w-full p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+              />
+              
+              <input
+                type="text"
+                placeholder="Kart Numarası"
+                value={cardData.cardNumber}
+                onChange={(e) => setCardData({...cardData, cardNumber: formatCardNumber(e.target.value)})}
+                maxLength="19"
+                className="w-full p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+              />
+              
+              <div className="grid grid-cols-3 gap-3">
+                <input
+                  type="text"
+                  placeholder="MM"
+                  value={cardData.expireMonth}
+                  onChange={(e) => setCardData({...cardData, expireMonth: e.target.value.replace(/\D/g, '').slice(0, 2)})}
+                  className="p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+                />
+                
+                <input
+                  type="text"
+                  placeholder="YYYY"
+                  value={cardData.expireYear}
+                  onChange={(e) => setCardData({...cardData, expireYear: e.target.value.replace(/\D/g, '').slice(0, 4)})}
+                  className="p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+                />
+                
+                <input
+                  type="text"
+                  placeholder="CVC"
+                  value={cardData.cvc}
+                  onChange={(e) => setCardData({...cardData, cvc: e.target.value.replace(/\D/g, '').slice(0, 3)})}
+                  className="p-3 bg-zinc-800 text-white rounded-xl border border-zinc-700 focus:border-white focus:outline-none"
+                />
+              </div>
+              
+              <button
+                onClick={handleSubscribe}
+                disabled={paymentLoading}
+                className="w-full bg-green-600 text-white py-4 rounded-xl font-bold hover:bg-green-500 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                {paymentLoading ? "İşleniyor..." : "Premium'a Geç - ₺29.99/ay"}
+              </button>
+            </div>
+            
+            <div className="mt-4 text-xs text-zinc-400 text-center">
+              İyzico güvenli ödeme sistemi ile korunuyorsunuz. İstediğiniz zaman iptal edebilirsiniz.
+            </div>
+          </div>
+        ) : (
+          <div className="bg-zinc-900 rounded-2xl p-6 border border-zinc-800">
+            <h2 className="text-xl font-bold text-green-400 mb-4">✨ Premium Üyesiniz!</h2>
+            <p className="text-zinc-300 mb-6">Sınırsız sorgu hakkınız var ve tüm premium özelliklerden faydalanabiliyorsunuz.</p>
+            
+            <button
+              onClick={handleCancelSubscription}
+              className="w-full bg-red-600 text-white py-3 rounded-xl font-bold hover:bg-red-500 transition-colors"
+            >
+              Aboneliği İptal Et
+            </button>
+          </div>
+        )}
+      </div>
+
+      <BottomNavigation />
+    </div>
+  );
+};
+
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
