@@ -635,7 +635,8 @@ async def create_decision(decision_data: DecisionCreate, current_user: dict = De
         "user_id": current_user["_id"],
         "text": decision_data.text,
         "alternatives": alternatives,
-        "is_public": decision_data.is_public,
+        "privacy_level": decision_data.privacy_level,  # "public", "followers", "private"
+        "is_public": decision_data.privacy_level == "public",  # backwards compatibility
         "created_at": datetime.now(),
         "dice_result": None,
         "selected_option": None,
