@@ -519,10 +519,15 @@ class ZaradamAPITester:
 
 if __name__ == "__main__":
     tester = ZaradamAPITester()
-    results = tester.run_all_tests()
+    
+    # Test the root endpoint first
+    tester.test_root_endpoint()
+    
+    # Run the complete messaging and notification system tests
+    results = tester.run_messaging_tests()
     
     # Save results to file
-    with open("/app/test_results_backend.json", "w") as f:
+    with open("/app/test_results_messaging.json", "w") as f:
         json.dump(results, f, indent=2)
     
-    print(f"\n📁 Detailed results saved to: /app/test_results_backend.json")
+    print(f"\n📁 Detailed results saved to: /app/test_results_messaging.json")
