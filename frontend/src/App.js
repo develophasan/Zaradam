@@ -1102,6 +1102,119 @@ const AdminDashboard = () => {
           </div>
         )}
 
+        {/* Subscriptions Tab */}
+        {activeTab === 'subscriptions' && subscriptionStats && (
+          <div className="space-y-6">
+            {/* Subscription Overview */}
+            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+              <h2 className="text-2xl font-bold text-white mb-6">💳 Abonelik Yönetimi</h2>
+              
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-8">
+                <div className="text-center p-4 bg-yellow-900/20 border border-yellow-700/50 rounded-xl">
+                  <div className="text-3xl font-bold text-yellow-400 mb-2">{subscriptionStats.premium_users}</div>
+                  <div className="text-yellow-300">Premium Kullanıcı</div>
+                  <div className="text-xs text-yellow-500 mt-1">{subscriptionStats.premium_percentage}% toplam kullanıcının</div>
+                </div>
+                <div className="text-center p-4 bg-zinc-800 border border-zinc-700 rounded-xl">
+                  <div className="text-3xl font-bold text-zinc-300 mb-2">{subscriptionStats.free_users}</div>
+                  <div className="text-zinc-400">Ücretsiz Kullanıcı</div>
+                  <div className="text-xs text-zinc-500 mt-1">Günlük 3 sorgu limiti</div>
+                </div>
+                <div className="text-center p-4 bg-green-900/20 border border-green-700/50 rounded-xl">
+                  <div className="text-3xl font-bold text-green-400 mb-2">{subscriptionStats.recent_premium}</div>
+                  <div className="text-green-300">Son 30 Günlük Premium</div>
+                  <div className="text-xs text-green-500 mt-1">Yeni abonelikler</div>
+                </div>
+              </div>
+              
+              {/* Test Mode Warning */}
+              <div className="bg-orange-900/20 border border-orange-700/50 p-4 rounded-xl mb-6">
+                <h3 className="text-orange-300 font-bold mb-2">🧪 Test Modu Aktif</h3>
+                <p className="text-orange-200 text-sm">
+                  Şu anda test modundasınız. İyzico ödeme sistemi devre dışı - kullanıcılar gerçek ödeme yapmadan premium olabilir.
+                  Admin olarak kullanıcılara manuel premium yetkisi verebilirsiniz.
+                </p>
+              </div>
+            </div>
+
+            {/* Premium Users List */}
+            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+              <h3 className="text-xl font-bold text-white mb-4">✨ Premium Kullanıcılar</h3>
+              <div className="space-y-3">
+                {users.filter(user => user.subscription?.is_premium).map(user => (
+                  <div key={user._id} className="flex items-center justify-between p-4 bg-yellow-900/10 border border-yellow-700/30 rounded-xl">
+                    <div className="flex items-center space-x-3">
+                      <img 
+                        src={user.avatar} 
+                        alt={user.name}
+                        className="w-10 h-10 rounded-xl object-cover border border-yellow-700"
+                      />
+                      <div>
+                        <h4 className="text-white font-semibold">{user.name}</h4>
+                        <p className="text-zinc-400 text-sm">@{user.username}</p>
+                        <p className="text-yellow-400 text-xs">
+                          {user.subscription?.subscription_status === 'active_admin' ? '👑 Admin Verdi' : '💳 Ödeme Yaptı'}
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => toggleUserPremium(user._id)}
+                      className="bg-red-900 text-white px-4 py-2 rounded-lg hover:bg-red-800 transition-colors border border-red-700 text-sm"
+                    >
+                      Premium Kaldır
+                    </button>
+                  </div>
+                ))}
+                
+                {users.filter(user => user.subscription?.is_premium).length === 0 && (
+                  <div className="text-center py-8 text-zinc-400">
+                    Henüz premium kullanıcı bulunmuyor
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Free Users - Potential Customers */}
+            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+              <h3 className="text-xl font-bold text-white mb-4">🆓 Ücretsiz Kullanıcılar (Premium Adayları)</h3>
+              <div className="space-y-3 max-h-96 overflow-y-auto">
+                {users.filter(user => !user.subscription?.is_premium).slice(0, 10).map(user => (
+                  <div key={user._id} className="flex items-center justify-between p-4 bg-zinc-800 border border-zinc-700 rounded-xl">
+                    <div className="flex items-center space-x-3">
+                      <img 
+                        src={user.avatar} 
+                        alt={user.name}
+                        className="w-10 h-10 rounded-xl object-cover border border-zinc-700"
+                      />
+                      <div>
+                        <h4 className="text-white font-semibold">{user.name}</h4>
+                        <p className="text-zinc-400 text-sm">@{user.username}</p>
+                        <p className="text-zinc-500 text-xs">
+                          {user.subscription?.queries_used_today || 0}/3 günlük sorgu kullanıldı
+                        </p>
+                      </div>
+                    </div>
+                    
+                    <button
+                      onClick={() => toggleUserPremium(user._id)}
+                      className="bg-yellow-600 text-black px-4 py-2 rounded-lg hover:bg-yellow-500 transition-colors font-bold text-sm"
+                    >
+                      Premium Yap
+                    </button>
+                  </div>
+                ))}
+                
+                {users.filter(user => !user.subscription?.is_premium).length > 10 && (
+                  <div className="text-center text-zinc-400 text-sm">
+                    ... ve {users.filter(user => !user.subscription?.is_premium).length - 10} kullanıcı daha
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* Export Tab */}
         {activeTab === 'export' && (
           <div className="space-y-6">
