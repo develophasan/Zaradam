@@ -1022,10 +1022,27 @@ const AdminDashboard = () => {
                             ⚠️ ASKİYA ALINMIŞ: {user.suspension_reason}
                           </p>
                         )}
+                        {user.subscription?.is_premium && (
+                          <p className="text-yellow-400 text-sm font-semibold">
+                            ✨ PREMIUM ÜYE
+                          </p>
+                        )}
                       </div>
                     </div>
                     
                     <div className="flex items-center space-x-2">
+                      {/* Premium Toggle */}
+                      <button
+                        onClick={() => toggleUserPremium(user._id)}
+                        className={`px-4 py-2 rounded-lg font-bold transition-colors border ${
+                          user.subscription?.is_premium
+                            ? 'bg-yellow-900 text-yellow-300 border-yellow-700 hover:bg-yellow-800'
+                            : 'bg-yellow-600 text-black border-yellow-500 hover:bg-yellow-500'
+                        }`}
+                      >
+                        {user.subscription?.is_premium ? 'Premium Kaldır' : 'Premium Yap'}
+                      </button>
+                      
                       {user.is_suspended ? (
                         <button
                           onClick={() => unsuspendUser(user._id)}
