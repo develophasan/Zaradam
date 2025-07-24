@@ -2,54 +2,54 @@
   {
     "test": "Root Endpoint",
     "success": false,
-    "message": "HTTP 502",
+    "message": "HTTP 500",
     "details": {
-      "response": ""
+      "response": "Internal Server Error"
     },
-    "timestamp": "2025-07-24T14:18:54.691401"
+    "timestamp": "2025-07-24T14:19:48.237506"
   },
   {
     "test": "User Registration",
     "success": false,
-    "message": "HTTP 502",
+    "message": "HTTP 500",
     "details": {
-      "response": ""
+      "response": "Internal Server Error"
     },
-    "timestamp": "2025-07-24T14:18:54.707949"
+    "timestamp": "2025-07-24T14:19:48.257098"
   },
   {
     "test": "User Login",
     "success": false,
     "message": "Skipped - no registered user",
     "details": {},
-    "timestamp": "2025-07-24T14:18:54.708229"
+    "timestamp": "2025-07-24T14:19:48.257341"
   },
   {
     "test": "Profile Photo Upload",
     "success": false,
     "message": "Skipped - no authenticated user",
     "details": {},
-    "timestamp": "2025-07-24T14:18:54.708255"
+    "timestamp": "2025-07-24T14:19:48.257364"
   },
   {
     "test": "Profile Update",
     "success": false,
     "message": "Skipped - no authenticated user",
     "details": {},
-    "timestamp": "2025-07-24T14:18:54.708263"
+    "timestamp": "2025-07-24T14:19:48.257372"
   },
   {
     "test": "Decision Privacy Levels",
     "success": false,
     "message": "Skipped - no authenticated user",
     "details": {},
-    "timestamp": "2025-07-24T14:18:54.708269"
+    "timestamp": "2025-07-24T14:19:48.257379"
   },
   {
     "test": "Decision History Privacy",
     "success": false,
     "message": "Skipped - no authenticated user",
     "details": {},
-    "timestamp": "2025-07-24T14:18:54.708275"
+    "timestamp": "2025-07-24T14:19:48.257385"
   }
 ]
