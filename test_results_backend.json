@@ -1,0 +1,55 @@
+[
+  {
+    "test": "Root Endpoint",
+    "success": false,
+    "message": "HTTP 502",
+    "details": {
+      "response": ""
+    },
+    "timestamp": "2025-07-24T14:18:54.691401"
+  },
+  {
+    "test": "User Registration",
+    "success": false,
+    "message": "HTTP 502",
+    "details": {
+      "response": ""
+    },
+    "timestamp": "2025-07-24T14:18:54.707949"
+  },
+  {
+    "test": "User Login",
+    "success": false,
+    "message": "Skipped - no registered user",
+    "details": {},
+    "timestamp": "2025-07-24T14:18:54.708229"
+  },
+  {
+    "test": "Profile Photo Upload",
+    "success": false,
+    "message": "Skipped - no authenticated user",
+    "details": {},
+    "timestamp": "2025-07-24T14:18:54.708255"
+  },
+  {
+    "test": "Profile Update",
+    "success": false,
+    "message": "Skipped - no authenticated user",
+    "details": {},
+    "timestamp": "2025-07-24T14:18:54.708263"
+  },
+  {
+    "test": "Decision Privacy Levels",
+    "success": false,
+    "message": "Skipped - no authenticated user",
+    "details": {},
+    "timestamp": "2025-07-24T14:18:54.708269"
+  },
+  {
+    "test": "Decision History Privacy",
+    "success": false,
+    "message": "Skipped - no authenticated user",
+    "details": {},
+    "timestamp": "2025-07-24T14:18:54.708275"
+  }
+]
