@@ -731,6 +731,10 @@ async def get_decision_history(current_user: dict = Depends(get_current_user)):
         decision["created_at"] = decision["created_at"].strftime("%Y-%m-%d")
         if "rolled_at" in decision:
             decision["rolled_at"] = decision["rolled_at"].strftime("%Y-%m-%d %H:%M")
+        
+        # Handle backwards compatibility for privacy levels
+        if "privacy_level" not in decision:
+            decision["privacy_level"] = "public" if decision.get("is_public", True) else "private"
     
     return decisions
 
