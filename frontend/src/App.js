@@ -1793,14 +1793,18 @@ const ProfilePage = () => {
             </div>
           )}
 
-          <div className="grid grid-cols-2 gap-4 mb-6">
+          <div className="grid grid-cols-3 gap-4 mb-6">
             <div className="text-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
               <div className="text-2xl font-bold text-white">{user?.stats?.total_decisions || 0}</div>
               <div className="text-sm text-zinc-400">Toplam Karar</div>
             </div>
             <div className="text-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
-              <div className="text-2xl font-bold text-white">{user?.stats?.success_rate || 0}%</div>
-              <div className="text-sm text-zinc-400">Başarı Oranı</div>
+              <div className="text-2xl font-bold text-white">{user?.stats?.followers || 0}</div>
+              <div className="text-sm text-zinc-400">Takipçi</div>
+            </div>
+            <div className="text-center p-4 bg-zinc-800 rounded-xl border border-zinc-700">
+              <div className="text-2xl font-bold text-white">{user?.stats?.following || 0}</div>
+              <div className="text-sm text-zinc-400">Takip</div>
             </div>
           </div>
         </div>
