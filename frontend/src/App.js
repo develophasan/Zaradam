@@ -2429,17 +2429,31 @@ const MessagesPage = () => {
                 {conversations.map((conversation, index) => (
                   <div
                     key={index}
-                    onClick={() => handleConversationSelect(conversation)}
-                    className="flex items-center space-x-3 p-4 bg-zinc-900 rounded-xl border border-zinc-800 cursor-pointer hover:bg-zinc-800 transition-colors"
+                    className="flex items-center space-x-3 p-4 bg-zinc-900 rounded-xl border border-zinc-800 hover:bg-zinc-800 transition-colors"
                   >
                     <img 
                       src={conversation.partner.avatar} 
                       alt={conversation.partner.name}
-                      className="w-12 h-12 rounded-xl object-cover"
+                      className="w-12 h-12 rounded-xl object-cover cursor-pointer hover:ring-2 hover:ring-blue-500 transition-all"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        navigate(`/user/${conversation.partner.id}`);
+                      }}
                     />
-                    <div className="flex-1">
+                    <div 
+                      className="flex-1 cursor-pointer"
+                      onClick={() => handleConversationSelect(conversation)}
+                    >
                       <div className="flex items-center justify-between mb-1">
-                        <h3 className="font-semibold text-white">{conversation.partner.name}</h3>
+                        <h3 
+                          className="font-semibold text-white hover:text-blue-400 transition-colors cursor-pointer"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            navigate(`/user/${conversation.partner.id}`);
+                          }}
+                        >
+                          {conversation.partner.name}
+                        </h3>
                         <span className="text-sm text-zinc-400">{conversation.last_message.created_at}</span>
                       </div>
                       <p className="text-zinc-400 text-sm truncate">{conversation.last_message.content}</p>
