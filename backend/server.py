@@ -108,6 +108,20 @@ class NotificationCreate(BaseModel):
 class FollowUser(BaseModel):
     target_user_id: str
 
+class SubscriptionCreate(BaseModel):
+    card_holder_name: str
+    card_number: str
+    expire_month: str
+    expire_year: str
+    cvc: str
+    
+class PaymentRequest(BaseModel):
+    card_holder_name: str
+    card_number: str
+    expire_month: str
+    expire_year: str
+    cvc: str
+
 # WebSocket Manager
 class ConnectionManager:
     def __init__(self):
