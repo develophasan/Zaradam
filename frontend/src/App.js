@@ -942,23 +942,51 @@ const AdminDashboard = () => {
 
         {/* Dashboard Tab */}
         {activeTab === 'dashboard' && dashboardData && (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-              <div className="text-3xl font-bold text-white mb-2">{dashboardData.stats.total_users}</div>
-              <div className="text-zinc-400">Toplam Kullanıcı</div>
+          <div className="space-y-6">
+            {/* General Stats */}
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+              <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+                <div className="text-3xl font-bold text-white mb-2">{dashboardData.stats.total_users}</div>
+                <div className="text-zinc-400">Toplam Kullanıcı</div>
+              </div>
+              <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+                <div className="text-3xl font-bold text-green-400 mb-2">{dashboardData.stats.active_users}</div>
+                <div className="text-zinc-400">Aktif Kullanıcı</div>
+              </div>
+              <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+                <div className="text-3xl font-bold text-red-400 mb-2">{dashboardData.stats.suspended_users}</div>
+                <div className="text-zinc-400">Askıya Alınmış</div>
+              </div>
+              <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+                <div className="text-3xl font-bold text-blue-400 mb-2">{dashboardData.stats.total_decisions}</div>
+                <div className="text-zinc-400">Toplam Karar</div>
+              </div>
             </div>
-            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-              <div className="text-3xl font-bold text-green-400 mb-2">{dashboardData.stats.active_users}</div>
-              <div className="text-zinc-400">Aktif Kullanıcı</div>
-            </div>
-            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-              <div className="text-3xl font-bold text-red-400 mb-2">{dashboardData.stats.suspended_users}</div>
-              <div className="text-zinc-400">Askıya Alınmış</div>
-            </div>
-            <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
-              <div className="text-3xl font-bold text-blue-400 mb-2">{dashboardData.stats.total_decisions}</div>
-              <div className="text-zinc-400">Toplam Karar</div>
-            </div>
+            
+            {/* Subscription Stats */}
+            {subscriptionStats && (
+              <div className="bg-zinc-900 p-6 rounded-xl border border-zinc-800">
+                <h3 className="text-xl font-bold text-white mb-4">💳 Abonelik İstatistikleri</h3>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-yellow-400 mb-1">{subscriptionStats.premium_users}</div>
+                    <div className="text-zinc-400 text-sm">Premium Kullanıcı</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-zinc-400 mb-1">{subscriptionStats.free_users}</div>
+                    <div className="text-zinc-400 text-sm">Ücretsiz Kullanıcı</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-green-400 mb-1">{subscriptionStats.premium_percentage}%</div>
+                    <div className="text-zinc-400 text-sm">Premium Oranı</div>
+                  </div>
+                  <div className="text-center">
+                    <div className="text-2xl font-bold text-blue-400 mb-1">{subscriptionStats.recent_premium}</div>
+                    <div className="text-zinc-400 text-sm">Son 30 Gün</div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
         )}
 
