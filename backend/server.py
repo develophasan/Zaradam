@@ -159,6 +159,53 @@ def create_access_token(data: dict):
     encoded_jwt = jwt.encode(to_encode, JWT_SECRET, algorithm=JWT_ALGORITHM)
     return encoded_jwt
 
+def check_query_limit(current_user: dict):
+    """Check if user can make a query"""
+    subscription = current_user.get("subscription", {})
+    
+    # Premium users have unlimited queries
+    if subscription.get("is_premium", False):
+        return True
+    
+    # Check daily limit for free users
+    today = datetime.now().strftime("%Y-%m-%d")
+    last_query_date = subscription.get("last_query_date", "")
+    queries_used = subscription.get("queries_used_today", 0)
+    
+    # Reset daily counter if it's a new day
+    if last_query_date != today:
+        users_collection.update_one(
+            {"_id": current_user["_id"]},
+            {"$set": {
+                "subscription.queries_used_today": 0,
+                "subscription.last_query_date": today
+            }}
+        )
+        queries_used = 0
+    
+    # Check if user has queries left
+    if queries_used >= subscription.get("daily_queries", 3):
+        return False
+    
+    return True
+
+def increment_query_usage(current_user: dict):
+    """Increment user's daily query usage"""
+    subscription = current_user.get("subscription", {})
+    
+    # Don't increment for premium users
+    if subscription.get("is_premium", False):
+        return
+    
+    today = datetime.now().strftime("%Y-%m-%d")
+    users_collection.update_one(
+        {"_id": current_user["_id"]},
+        {
+            "$inc": {"subscription.queries_used_today": 1},
+            "$set": {"subscription.last_query_date": today}
+        }
+    )
+
 async def get_current_user(credentials: HTTPAuthorizationCredentials = Depends(security)):
     try:
         token = credentials.credentials
