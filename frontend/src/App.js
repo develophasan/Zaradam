@@ -2902,8 +2902,12 @@ const UserProfilePage = () => {
   };
 
   const handleSendMessage = () => {
-    if (!isFollowing) {
-      alert('Mesaj göndermek için önce takip etmelisiniz');
+    if (!user.can_message) {
+      if (!isFollowing) {
+        alert('Mesaj göndermek için önce takip etmelisiniz');
+      } else if (!user.follows_back) {
+        alert('Mesaj göndermek için karşılıklı takip gereklidir. Bu kullanıcı sizi henüz takip etmiyor.');
+      }
       return;
     }
     
