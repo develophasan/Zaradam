@@ -837,11 +837,45 @@ if __name__ == "__main__":
     # Test the root endpoint first
     tester.test_root_endpoint()
     
-    # Run the complete messaging and notification system tests
-    results = tester.run_messaging_tests()
+    # Run the user profile API tests (focus of this review)
+    print("\n" + "="*80)
+    print("🎯 FOCUS: USER PROFILE API ENDPOINT TESTING")
+    print("="*80)
+    profile_results = tester.run_user_profile_tests()
+    
+    # Also run messaging tests to ensure integration works
+    print("\n" + "="*80)
+    print("🔄 INTEGRATION: MESSAGING SYSTEM TESTS")
+    print("="*80)
+    messaging_results = tester.run_messaging_tests()
+    
+    # Combined results
+    all_results = tester.test_results
     
     # Save results to file
-    with open("/app/test_results_messaging.json", "w") as f:
-        json.dump(results, f, indent=2)
+    with open("/app/test_results_user_profile.json", "w") as f:
+        json.dump(all_results, f, indent=2)
     
-    print(f"\n📁 Detailed results saved to: /app/test_results_messaging.json")
+    print(f"\n📁 Detailed results saved to: /app/test_results_user_profile.json")
+    
+    # Final summary
+    print("\n" + "="*80)
+    print("🏁 FINAL TEST SUMMARY")
+    print("="*80)
+    
+    passed = sum(1 for result in all_results if result["success"])
+    total = len(all_results)
+    
+    print(f"Total Tests Run: {total}")
+    print(f"Passed: {passed}")
+    print(f"Failed: {total - passed}")
+    print(f"Success Rate: {(passed/total)*100:.1f}%")
+    
+    # Critical failures
+    critical_failures = [result for result in all_results if not result["success"] and "Profile" in result["test"]]
+    if critical_failures:
+        print("\n🚨 CRITICAL USER PROFILE API FAILURES:")
+        for test in critical_failures:
+            print(f"  - {test['test']}: {test['message']}")
+    else:
+        print("\n✅ ALL USER PROFILE API TESTS PASSED!")
