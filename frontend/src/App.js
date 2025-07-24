@@ -193,7 +193,7 @@ const NotificationBell = () => {
       </button>
 
       {showNotifications && (
-        <div className="absolute right-0 top-8 w-80 bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 max-h-96 overflow-hidden">
+        <div className="absolute right-0 top-8 w-80 max-w-[calc(100vw-2rem)] bg-zinc-900 border border-zinc-800 rounded-xl shadow-2xl z-50 max-h-96 overflow-hidden">
           <div className="p-4 border-b border-zinc-800">
             <h3 className="font-bold text-white">Bildirimler</h3>
           </div>
@@ -217,8 +217,8 @@ const NotificationBell = () => {
                       {notification.type === 'message' ? '💬' : 
                        notification.type === 'follow' ? '👥' : '🔔'}
                     </div>
-                    <div className="flex-1">
-                      <p className={`text-sm ${notification.read ? 'text-zinc-400' : 'text-white font-medium'}`}>
+                    <div className="flex-1 min-w-0">
+                      <p className={`text-sm break-words ${notification.read ? 'text-zinc-400' : 'text-white font-medium'}`}>
                         {notification.content}
                       </p>
                       <p className="text-xs text-zinc-500 mt-1">
@@ -226,7 +226,7 @@ const NotificationBell = () => {
                       </p>
                     </div>
                     {!notification.read && (
-                      <div className="w-2 h-2 bg-blue-600 rounded-full"></div>
+                      <div className="w-2 h-2 bg-blue-600 rounded-full flex-shrink-0"></div>
                     )}
                   </div>
                 </div>
