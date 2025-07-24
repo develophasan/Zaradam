@@ -874,6 +874,369 @@ async def websocket_endpoint(websocket: WebSocket, user_id: str):
     except WebSocketDisconnect:
         manager.disconnect(user_id)
 
+# Include additional routers
+try:
+    from password_reset import router as password_reset_router
+    from comments_votes import router as comments_votes_router
+    
+    app.include_router(password_reset_router)
+    app.include_router(comments_votes_router)
+    logger.info("Additional routers loaded successfully")
+except ImportError as e:
+    logger.warning(f"Could not load additional routers: {e}")
+
+# Enhanced admin endpoints for export and user management
+@app.get("/api/admin/users",
+         summary="Get All Users",
+         description="Tüm kullanıcıları listeler (admin only)")
+async def get_all_users(
+    request: Request,
+    admin: dict = Depends(get_admin_user),
+    skip: int = 0,
+    limit: int = 50,
+    search: str = None
+):
+    try:
+        # Kullanıcı arama
+        query = {}
+        if search:
+            query = {
+                "$or": [
+                    {"name": {"$regex": search, "$options": "i"}},
+                    {"username": {"$regex": search, "$options": "i"}},
+                    {"email": {"$regex": search, "$options": "i"}}
+                ]
+            }
+        
+        users = list(users_collection.find(
+            query,
+            {"password": 0}
+        ).sort("created_at", -1).skip(skip).limit(limit))
+        
+        # Format dates
+        for user in users:
+            user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
+            if user.get("suspension_until"):
+                user["suspension_until"] = user["suspension_until"].strftime("%Y-%m-%d %H:%M")
+            if user.get("last_login"):
+                user["last_login"] = user["last_login"].strftime("%Y-%m-%d %H:%M")
+        
+        # Log admin action
+        log_admin_action(
+            "admin", 
+            "view_users", 
+            details={"search": search, "count": len(users)},
+            ip_address=get_client_ip(request)
+        )
+        
+        return users
+    except Exception as e:
+        logger.error(f"Get all users error: {e}")
+        raise HTTPException(status_code=500, detail="Kullanıcı listesi alınamadı")
+
+@app.get("/api/admin/users/{user_id}",
+         summary="Get User Details",
+         description="Kullanıcı detaylarını getirir (admin only)")
+async def get_user_details(
+    user_id: str, 
+    request: Request,
+    admin: dict = Depends(get_admin_user)
+):
+    try:
+        user = users_collection.find_one({"_id": user_id}, {"password": 0})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        # Kullanıcının kararlarını getir
+        decisions = list(decisions_collection.find(
+            {"user_id": user_id},
+            {"user_ip": 0}  # Don't expose IP
+        ).sort("created_at", -1).limit(10))
+        
+        for decision in decisions:
+            decision["created_at"] = decision["created_at"].strftime("%Y-%m-%d %H:%M")
+        
+        # Format dates
+        user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M")
+        if user.get("suspension_until"):
+            user["suspension_until"] = user["suspension_until"].strftime("%Y-%m-%d %H:%M")
+        if user.get("last_login"):
+            user["last_login"] = user["last_login"].strftime("%Y-%m-%d %H:%M")
+        
+        # Log admin action
+        log_admin_action(
+            "admin", 
+            "view_user_details", 
+            target_user_id=user_id,
+            ip_address=get_client_ip(request)
+        )
+        
+        return {
+            "user": user,
+            "recent_decisions": decisions
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get user details error: {e}")
+        raise HTTPException(status_code=500, detail="Kullanıcı detayları alınamadı")
+
+@app.post("/api/admin/users/{user_id}/unsuspend",
+          summary="Unsuspend User",
+          description="Kullanıcı askısını kaldırır")
+async def unsuspend_user(
+    user_id: str, 
+    request: Request,
+    admin: dict = Depends(get_admin_user)
+):
+    try:
+        user = users_collection.find_one({"_id": user_id})
+        if not user:
+            raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        
+        # Askıyı kaldır
+        users_collection.update_one(
+            {"_id": user_id},
+            {
+                "$set": {
+                    "is_suspended": False,
+                    "suspension_reason": None,
+                    "suspension_until": None
+                }
+            }
+        )
+        
+        # Admin action logla
+        log_admin_action(
+            "admin", 
+            "unsuspend_user", 
+            target_user_id=user_id,
+            details={"target_username": user["username"]},
+            ip_address=get_client_ip(request)
+        )
+        
+        logger.info(f"User {user['username']} unsuspended by admin")
+        
+        return {"success": True, "message": "Kullanıcı askısı başarıyla kaldırıldı"}
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Unsuspend user error: {e}")
+        raise HTTPException(status_code=500, detail="Askı kaldırma işlemi başarısız")
+
+@app.get("/api/admin/logs",
+         summary="Get Admin Logs",
+         description="Admin işlem loglarını getirir")
+async def get_admin_logs(
+    request: Request,
+    admin: dict = Depends(get_admin_user),
+    skip: int = 0,
+    limit: int = 100
+):
+    try:
+        logs = list(admin_logs_collection.find({}).sort("timestamp", -1).skip(skip).limit(limit))
+        
+        # Format timestamps
+        for log in logs:
+            log["timestamp"] = log["timestamp"].strftime("%Y-%m-%d %H:%M:%S")
+        
+        return logs
+    except Exception as e:
+        logger.error(f"Get admin logs error: {e}")
+        raise HTTPException(status_code=500, detail="Loglar getirilemedi")
+
+@app.get("/api/admin/export/users",
+         summary="Export User Data",
+         description="Tüm kullanıcı verilerini export eder (devlet talebi için)")
+async def export_user_data(
+    request: Request,
+    admin: dict = Depends(get_admin_user)
+):
+    """Devlet talep ettiğinde kullanıcı verilerini export et"""
+    try:
+        users = list(users_collection.find({}, {"password": 0}))
+        decisions = list(decisions_collection.find({}, {"user_ip": 0}))
+        
+        # Format dates for export
+        for user in users:
+            user["created_at"] = user["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+            if user.get("suspension_until"):
+                user["suspension_until"] = user["suspension_until"].strftime("%Y-%m-%d %H:%M:%S")
+            if user.get("last_login"):
+                user["last_login"] = user["last_login"].strftime("%Y-%m-%d %H:%M:%S")
+        
+        for decision in decisions:
+            decision["created_at"] = decision["created_at"].strftime("%Y-%m-%d %H:%M:%S")
+        
+        export_data = {
+            "export_date": datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+            "export_id": str(uuid.uuid4()),
+            "export_reason": "Legal compliance / Government request",
+            "total_users": len(users),
+            "total_decisions": len(decisions),
+            "users": users,
+            "decisions": decisions
+        }
+        
+        # Log critical export action
+        log_admin_action(
+            "admin", 
+            "export_user_data", 
+            details={
+                "export_type": "full_user_data",
+                "user_count": len(users),
+                "decision_count": len(decisions),
+                "export_timestamp": datetime.now().isoformat(),
+                "export_id": export_data["export_id"]
+            },
+            ip_address=get_client_ip(request)
+        )
+        
+        logger.warning(f"CRITICAL: Full user data export performed by admin from IP: {get_client_ip(request)}")
+        
+        return export_data
+    except Exception as e:
+        logger.error(f"Export user data error: {e}")
+        raise HTTPException(status_code=500, detail="Veri export işlemi başarısız")
+
+# Enhanced public decision feed
+@app.get("/api/decisions/public",
+         summary="Get Public Decisions",
+         description="Herkese açık kararları getirir")
+async def get_public_decisions(skip: int = 0, limit: int = 20):
+    try:
+        decisions = list(decisions_collection.find(
+            {"is_public": True, "dice_result": {"$ne": None}},
+            {"user_ip": 0}
+        ).sort("created_at", -1).skip(skip).limit(limit))
+        
+        # Get user info for each decision
+        for decision in decisions:
+            user = users_collection.find_one(
+                {"_id": decision["user_id"]}, 
+                {"name": 1, "username": 1, "avatar": 1}
+            )
+            decision["user"] = user
+            decision["created_at"] = decision["created_at"].strftime("%Y-%m-%d")
+            
+            # Add vote stats if available
+            decision["vote_stats"] = decision.get("vote_stats", {
+                "helpful": 0,
+                "unhelpful": 0,
+                "total": 0
+            })
+        
+        return decisions
+    except Exception as e:
+        logger.error(f"Get public decisions error: {e}")
+        raise HTTPException(status_code=500, detail="Herkese açık kararlar getirilemedi")
+
+# Daily decision suggestions endpoint
+@app.get("/api/decisions/suggestions",
+         summary="Get Daily Decision Suggestions",
+         description="Günlük rastgele karar önerileri getirir")
+async def get_decision_suggestions():
+    try:
+        suggestions = [
+            "Bu hafta sonu hangi filmi izlemeliyim?",
+            "Akşam yemeği için ne pişirmeliyim?", 
+            "Bugün hangi sporla ilgilenmeliyim?",
+            "Hafta sonu tatili için nereye gitmeliyim?",
+            "Bu ay hangi kitabı okumalıyım?",
+            "Yeni bir hobi olarak neye başlamalıyım?",
+            "Arkadaşlarımla hangi oyunu oynamalıyım?",
+            "Bugün hangi müzik türünü dinlemeliyim?",
+            "Yeni bir dil öğrenmek için hangisini seçmeliyim?",
+            "Bu akşam evde mi kalmalıyım yoksa dışarı mı çıkmalıyım?"
+        ]
+        
+        # Return 3 random suggestions
+        import random
+        daily_suggestions = random.sample(suggestions, 3)
+        
+        return {
+            "suggestions": daily_suggestions,
+            "date": datetime.now().strftime("%Y-%m-%d")
+        }
+    except Exception as e:
+        logger.error(f"Get decision suggestions error: {e}")
+        raise HTTPException(status_code=500, detail="Öneriler getirilemedi")
+
+# User usage statistics
+@app.get("/api/users/{user_id}/stats",
+         summary="Get User Statistics",
+         description="Kullanıcı istatistiklerini getirir")
+async def get_user_stats(user_id: str, current_user: dict = Depends(get_current_user)):
+    try:
+        # Check if user can view these stats (own stats or public profile)
+        if user_id != current_user["_id"]:
+            target_user = users_collection.find_one({"_id": user_id})
+            if not target_user:
+                raise HTTPException(status_code=404, detail="Kullanıcı bulunamadı")
+        else:
+            target_user = current_user
+        
+        # Calculate detailed statistics
+        total_decisions = decisions_collection.count_documents({"user_id": user_id})
+        implemented_decisions = decisions_collection.count_documents({
+            "user_id": user_id,
+            "implemented": True
+        })
+        
+        public_decisions = decisions_collection.count_documents({
+            "user_id": user_id,
+            "is_public": True
+        })
+        
+        # Success rate by month (last 6 months)
+        monthly_stats = []
+        for i in range(6):
+            month_start = datetime.now().replace(day=1) - timedelta(days=30*i)
+            month_end = month_start + timedelta(days=32)
+            month_end = month_end.replace(day=1) - timedelta(days=1)
+            
+            month_decisions = decisions_collection.count_documents({
+                "user_id": user_id,
+                "created_at": {"$gte": month_start, "$lte": month_end}
+            })
+            
+            month_implemented = decisions_collection.count_documents({
+                "user_id": user_id,
+                "implemented": True,
+                "created_at": {"$gte": month_start, "$lte": month_end}
+            })
+            
+            success_rate = int((month_implemented / month_decisions) * 100) if month_decisions > 0 else 0
+            
+            monthly_stats.append({
+                "month": month_start.strftime("%Y-%m"),
+                "decisions": month_decisions,
+                "implemented": month_implemented,
+                "success_rate": success_rate
+            })
+        
+        overall_success_rate = int((implemented_decisions / total_decisions) * 100) if total_decisions > 0 else 0
+        
+        return {
+            "user_id": user_id,
+            "username": target_user["username"],
+            "stats": {
+                "total_decisions": total_decisions,
+                "implemented_decisions": implemented_decisions,
+                "success_rate": overall_success_rate,
+                "public_decisions": public_decisions,
+                "followers": target_user.get("stats", {}).get("followers", 0),
+                "following": target_user.get("stats", {}).get("following", 0)
+            },
+            "monthly_stats": monthly_stats,
+            "member_since": target_user["created_at"].strftime("%Y-%m-%d")
+        }
+    except HTTPException:
+        raise
+    except Exception as e:
+        logger.error(f"Get user stats error: {e}")
+        raise HTTPException(status_code=500, detail="İstatistikler getirilemedi")
+
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8001, log_level="info")
