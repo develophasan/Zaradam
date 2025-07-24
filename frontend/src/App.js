@@ -2558,6 +2558,7 @@ function App() {
             <Route path="/result" element={<ProtectedRoute><ResultPage /></ProtectedRoute>} />
             <Route path="/history" element={<ProtectedRoute><HistoryPage /></ProtectedRoute>} />
             <Route path="/profile" element={<ProtectedRoute><ProfilePage /></ProtectedRoute>} />
+            <Route path="/subscription" element={<ProtectedRoute><SubscriptionPage /></ProtectedRoute>} />
             <Route path="/messages" element={<ProtectedRoute><MessagesPage /></ProtectedRoute>} />
           </Routes>
         </BrowserRouter>
