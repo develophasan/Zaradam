@@ -22,9 +22,11 @@ class TestAPI:
 
     def test_user_registration_success(self):
         """Test successful user registration"""
+        import random
+        random_num = random.randint(1000, 9999)
         user_data = {
-            "username": "testuser123",
-            "email": "test123@example.com",
+            "username": f"testuser{random_num}",
+            "email": f"test{random_num}@example.com",
             "password": "testpass123",
             "name": "Test User",
             "privacy_agreement": True
