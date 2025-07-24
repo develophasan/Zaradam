@@ -91,6 +91,14 @@ class UserProfileUpdate(BaseModel):
     name: Optional[str] = None
     avatar: Optional[str] = None
 
+class NotificationCreate(BaseModel):
+    type: str  # "message", "follow", "decision_like", etc.
+    content: str
+    data: Optional[Dict] = {}
+
+class FollowUser(BaseModel):
+    target_user_id: str
+
 # WebSocket Manager
 class ConnectionManager:
     def __init__(self):
