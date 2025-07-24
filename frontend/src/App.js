@@ -2126,6 +2126,23 @@ const MessagesPage = () => {
 const BottomNavigation = () => {
   const navigate = useNavigate();
   const location = useLocation();
+  const [unreadMessages, setUnreadMessages] = useState(0);
+
+  useEffect(() => {
+    fetchUnreadMessages();
+    const interval = setInterval(fetchUnreadMessages, 30000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const fetchUnreadMessages = async () => {
+    try {
+      const conversations = await apiCall(`${API}/messages/conversations`);
+      const totalUnread = conversations.reduce((sum, conv) => sum + conv.unread_count, 0);
+      setUnreadMessages(totalUnread);
+    } catch (error) {
+      console.error('Failed to fetch unread messages:', error);
+    }
+  };
 
   const navItems = [
     { path: '/home', icon: '🏠', label: 'Ana Sayfa' },
@@ -2141,13 +2158,20 @@ const BottomNavigation = () => {
           <button
             key={item.path}
             onClick={() => navigate(item.path)}
-            className={`flex-1 py-3 px-2 text-center transition-colors ${
+            className={`flex-1 py-3 px-2 text-center transition-colors relative ${
               location.pathname === item.path
                 ? 'text-white bg-zinc-800'
                 : 'text-zinc-400 hover:text-white'
             }`}
           >
-            <div className="text-xl mb-1">{item.icon}</div>
+            <div className="text-xl mb-1">
+              {item.icon}
+              {item.path === '/messages' && unreadMessages > 0 && (
+                <span className="absolute top-1 right-2 w-5 h-5 bg-red-600 text-white rounded-full flex items-center justify-center text-xs font-bold">
+                  {unreadMessages > 9 ? '9+' : unreadMessages}
+                </span>
+              )}
+            </div>
             <div className="text-xs font-medium">{item.label}</div>
           </button>
         ))}
